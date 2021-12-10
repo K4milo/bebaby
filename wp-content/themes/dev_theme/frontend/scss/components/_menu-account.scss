@@ -1,0 +1,76 @@
+.menu-account {
+  $self: &;
+
+  &__wrapper {
+    display: flex;
+    padding: 0;
+    margin: rem(12px) 0;
+
+    @include from(l) {
+      justify-content: flex-end;
+    }
+  }
+
+  &__item {
+    display: block;
+    margin: 0 rem(8px);
+    position: relative;
+
+    &:hover {
+      #{$self}__cart-menu {
+        display: block;
+      }
+    }
+  }
+
+  &__icon {
+    background-color: $skin;
+    border-radius: 100%;
+    color: $brand-bg;
+    cursor: pointer;
+    font-size: rem(22px);
+    height: rem(45px);
+    line-height: rem(42px);
+    text-align: center;
+    width: rem(45px);
+
+    &:hover {
+      background-color: $sun;
+    }
+  }
+
+  &__cart {
+    position: relative;
+    height: rem(45px);
+    width: rem(45px);
+  }
+
+  &__cart-count {
+    background-color: $brand-bg;
+    border-radius: 100%;
+    bottom: rem(-4px);
+    color: $white;
+    font-size: rem(12px);
+    height: rem(16px);
+    line-height: rem(16px);
+    position: absolute;
+    right: 0;
+    text-align: center;
+    width: rem(16px);
+  }
+
+  &__cart-menu {
+    background-color: $white;
+    box-shadow: 0 0 rem(10px) rgba($black, .2);
+    display: none;
+    min-width: rem(300px);
+    padding: rem(10px);
+    position: absolute;
+    right: 0;
+    z-index: 2;
+
+    @include from(l) {
+      min-width: rem(360px);
+    }
+  }
+}

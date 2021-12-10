@@ -1,0 +1,82 @@
+.site-footer {
+  background-color: $brand-white;
+  box-shadow: 0 0 rem(10px) $grey-lt;
+  color: $grey;
+  overflow: hidden;
+
+  a {
+    @extend %body-m;
+    color: $grey;
+    text-decoration: none;
+
+    &:hover {
+      color: $brand-bg;
+    }
+  }
+
+  h4 {
+    @extend %h3;
+  }
+
+  ul {
+    padding: 0;
+  }
+
+  &__top {
+    padding: rem(20px) 0 rem(40px);
+
+    @include from(l) {
+      padding: rem(40px) 0;
+    }
+  }
+
+  &__logo {
+    display: block;
+    height: rem(95px);
+    width: rem(164px);
+
+    @include iconBg('../images/brand/logo-henkel.svg');
+  }
+
+  &__widget {
+    .menu {
+      > li {
+        display: block;
+        line-height: 2;
+
+        > a {
+          font-weight: bold;
+        }
+
+        &.menu-item-138 {
+          display: none;
+        }
+      }
+    }
+
+    .sub-menu {
+      padding: 0;
+
+      > li {
+        display: block;
+      }
+    }
+  }
+
+  &__widget--nav_menu-3 {
+    .menu {
+      > li {
+        > a {
+          font-weight: normal;
+        }
+      }
+    }
+  }
+
+  &__widget--text-2 {
+    ul li {
+      display: block;
+      margin-bottom: rem(10px);
+    }
+  }
+}

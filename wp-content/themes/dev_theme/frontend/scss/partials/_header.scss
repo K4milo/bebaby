@@ -1,0 +1,63 @@
+.main-menu {
+  background-color: $bone;
+  border-bottom: rem(1px) solid rgba($brand-bg, .2);
+  border-top: rem(1px) solid rgba($brand-bg, .2);
+
+  &__logo {
+    @include iconBg('../images/brand/logo.svg');
+    width: rem(120px);
+    height: rem(48px);
+
+    @include from(l) {
+      width: rem(180px);
+      height: rem(93px);
+    }
+  }
+
+  .menu-menu-principal-container {
+    margin-left: auto;
+  }
+  &__nav {
+    > li {
+      @include from (l) {
+        margin-left: rem(60px);
+      }
+
+      .dropdown-menu {
+        background-color: $white;
+        border-radius: 0;
+        min-width: rem(270px);
+
+        > li {
+          display: block;
+
+          a {
+            @extend %body;
+
+            color: $brand-bg;
+            display: block;
+            padding: rem(16px);
+
+            &:hover {
+              background-color: $brand-white;
+            }
+
+            @include from (l) {
+              padding: rem(25px) rem(50px);
+            }
+          }
+        }
+      }
+    }
+  }
+  &__link {
+    color: $brand-bg;
+    padding: rem(16px);
+    text-align: center;
+
+    @include from(l) {
+      text-align: left;
+      padding: inherit;
+    }
+  }
+}

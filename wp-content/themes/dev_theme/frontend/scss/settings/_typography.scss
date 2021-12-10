@@ -1,0 +1,71 @@
+@import 'fonts';
+
+%h1 {
+  font-family: $bd;
+  font-weight: 900;
+  font-size: rem(46px);
+}
+
+%h2 {
+  font-family: $bd;
+  font-weight: 700;
+  font-size: rem(34px);
+}
+
+%h3 {
+  font-family: $bd;
+  font-weight: 600;
+  font-size: rem(18px);
+}
+
+%body {
+  font-family: $rg;
+  font-weight: 300;
+  font-size: rem(20px);
+}
+
+%body-m {
+  font-family: $rg;
+  font-weight: 400;
+  font-size: rem(18px);
+}
+
+%body-s {
+  font-family: $rg;
+  font-weight: 400;
+  font-size: rem(14px);
+}
+
+%body-xs {
+  font-family: $rg;
+  font-size: rem(12px);
+}
+
+%body-btn {
+  color: $brand-bg;
+  font-family: $bd;
+  font-size: rem(16px);
+}
+
+%tag {
+  @extend %h3;
+  color: $grey;
+  text-transform: uppercase;
+}
+
+h1 {
+  @extend %h1;
+}
+
+h2 {
+  @extend %h2;
+}
+
+h3 {
+  @extend %h3;
+}
+
+p, ul, ol {
+  @extend %body-m;
+}
+

@@ -1,0 +1,39 @@
+// Colors
+$white: #ffffff;
+$black: #000000;
+
+// Brand Colors
+$grey: #575757;
+$grey-lt: #D8D8D8;
+$brand-white: #f7f7f7;
+$brand-bg: #77511B;
+$coffee: #8B6B24;
+$skin: #D0B3AA;
+$bone: #F3EFE8;
+$blue: #74A3B9;
+$sun: #F6C787;
+
+
+// Fonts
+$rg: 'Poppins', sans-serif;
+$bd: 'Nunito', sans-serif;
+
+// Media queries
+$breakpoints-min: (
+  's': 576px,
+  'm': 768px,
+  'l': 992px,
+  'xl': 1470px,
+);
+
+$breakpoints-max: ('xs': map-get($breakpoints-min, 's') - 1px,
+  's': map-get($breakpoints-min, 'm') - 1px,
+  'm': map-get($breakpoints-min, 'l') - 1px,
+  'l': map-get($breakpoints-min, 'xl') - 1px,
+);
+
+$container-max-widths: ('s': 540px,
+  'm': 720px,
+  'l': 960px,
+  'xl': 1320px,
+);

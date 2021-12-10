@@ -1,0 +1,43 @@
+.form-item {
+  padding-bottom: rem(20px);
+
+  &__label {
+    @extend %h3;
+    color: $grey;
+  }
+
+  &__text {
+    input {
+      @extend %body;
+      border: rem(2px) solid rgba($grey, .4);
+      border-radius: rem(16px);
+      display: block;
+      margin-top: rem(12px);
+      width: 100%;
+      padding: rem(10px) rem(16px);
+    }
+  }
+
+  &__textarea {
+    textarea {
+      @extend %body;
+      border: rem(2px) solid rgba($grey, .4);
+      border-radius: rem(16px);
+      display: block;
+      margin-top: rem(12px);
+      width: 100%;
+      height: rem(110px);
+      padding: rem(10px) rem(16px);
+    }
+  }
+
+  &__accept {
+    .wpcf7-list-item {
+      margin-left: 0;
+      @extend %body-xs;
+      color: $grey;
+      display: block;
+      margin-bottom: rem(8px);
+    }
+  }
+}
