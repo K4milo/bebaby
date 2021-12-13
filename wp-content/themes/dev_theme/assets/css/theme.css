@@ -22,10 +22,10 @@ h2 {
   font-weight: 700;
   font-size: 2.125rem; }
 
-h3, .form-item__label, .site-footer h4 {
+h3, .form-item__label, .site-footer h4, .card-product__title {
   font-family: "Nunito", sans-serif;
   font-weight: 600;
-  font-size: 1.125rem; }
+  font-size: 1.375rem; }
 
 .main-menu__nav > li .dropdown-menu > li a, .form-item__text input, .form-item__textarea textarea, .link--simple .link__content, .site-search .widget_product_search .woocommerce-product-search .search-field {
   font-family: "Poppins", sans-serif;
@@ -139,15 +139,7 @@ p, ul, ol, .site-footer a {
   .site-footer__logo {
     display: block;
     height: 5.9375rem;
-    width: 10.25rem;
-    display: block;
-    background-image: url(../css/aa8c3856a3a97c87c8b0d6a65905323f.svg);
-    background-size: 100%;
-    background-repeat: no-repeat;
-    background-position: center center;
-    text-indent: -999999px;
-    font-size: 0;
-    overflow: hidden; }
+    width: 10.25rem; }
   .site-footer__widget .menu > li {
     display: block;
     line-height: 2; }
@@ -191,6 +183,18 @@ p, ul, ol, .site-footer a {
 
 .link--icon .link__content:hover::after {
   margin-left: 1.5625rem; }
+
+.card-product {
+  background-color: #ffffff;
+  margin-bottom: 1.875rem; }
+  .card-product__thumbnail {
+    padding: 0.9375rem 3.125rem 0; }
+  .card-product__caption {
+    padding: 0.3125rem 1.25rem 1rem;
+    text-align: center; }
+  .card-product__title {
+    color: #74A3B9;
+    text-decoration: none; }
 
 .main-slider {
   position: relative; }
@@ -395,6 +399,22 @@ p, ul, ol, .site-footer a {
   @media only screen and (min-width: 992px) {
     .menu-account__cart-menu {
       min-width: 22.5rem; } }
+
+.featured-products {
+  background-color: #F3EFE8; }
+  .featured-products__content {
+    padding: 1.5625rem 0;
+    text-align: center; }
+    @media only screen and (min-width: 992px) {
+      .featured-products__content {
+        padding: 2.5rem 0; } }
+    .featured-products__content h2 {
+      color: #74A3B9;
+      margin-bottom: 1.25rem; }
+    .featured-products__content p {
+      color: #3a2911;
+      display: inline-block;
+      max-width: 37.5rem; }
 
 .top-menu .site-search {
   margin: 0; }

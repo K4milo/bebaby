@@ -1,0 +1,20 @@
+.card-product {
+  background-color: $white;
+  margin-bottom: rem(30px);
+
+  &__thumbnail {
+    padding: rem(15px) rem(50px) 0;
+  }
+
+  &__caption {
+    padding: rem(5px) rem(20px) rem(16px);
+    text-align: center;
+  }
+
+  &__title {
+    @extend %h3;
+
+    color: $blue;
+    text-decoration: none;
+  }
+}

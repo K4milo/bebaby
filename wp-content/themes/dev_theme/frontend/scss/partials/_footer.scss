@@ -34,8 +34,6 @@
     display: block;
     height: rem(95px);
     width: rem(164px);
-
-    @include iconBg('../images/brand/logo-henkel.svg');
   }
 
   &__widget {

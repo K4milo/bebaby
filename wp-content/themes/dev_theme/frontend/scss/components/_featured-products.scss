@@ -1,0 +1,23 @@
+.featured-products {
+  background-color: $bone;
+
+  &__content {
+    padding: rem(25px) 0;
+    text-align: center;
+
+    @include from(l) {
+      padding: rem(40px) 0;
+    }
+
+    h2 {
+      color: $blue;
+      margin-bottom: rem(20px);
+    }
+
+    p {
+      color: $text;
+      display: inline-block;
+      max-width: rem(600px);
+    }
+  }
+}
