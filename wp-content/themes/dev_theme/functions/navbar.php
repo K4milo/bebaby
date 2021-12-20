@@ -171,4 +171,5 @@ class wp_bootstrap_navwalker extends Walker_Nav_Menu {
 
 register_nav_menu('menu-main', __('Menú Principal', 'bst'));
 register_nav_menu('menu-corporate', __('Menú Corporativo', 'bst'));
+register_nav_menu('menu-social', __('Menú Social', 'bst'));
 register_nav_menu('menu-legal', __('Menú Legal', 'bst'));

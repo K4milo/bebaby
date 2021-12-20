@@ -6,8 +6,9 @@
   }
 
   &__image {
-    @include fluid-aspect($ratio: 1 1);
+    @include fluid-aspect(1 1, 'img');
     display: block;
+    height: 102%;
 
     img {
       object-fit: cover;
@@ -19,7 +20,11 @@
     }
 
     @include from(l) {
-      @include fluid-aspect($ratio: 16 6);
+      @include fluid-aspect(16 6, 'img');
+
+      img {
+        height: 102%;
+      }
     }
   }
 

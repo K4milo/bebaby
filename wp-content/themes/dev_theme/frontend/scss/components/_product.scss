@@ -1,0 +1,12 @@
+.product {
+  &__title {
+    color: $brand-bg;
+  }
+
+  .price {
+    @extend %h2;
+
+    color: $blue;
+    font-size: rem(32px);
+  }
+}

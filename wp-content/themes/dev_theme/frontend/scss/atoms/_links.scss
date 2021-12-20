@@ -34,4 +34,14 @@
       }
     }
   }
+
+  &--white {
+    #{$self}__content {
+      color: $white;
+
+      &::after {
+        @include iconBg('../images/icons/next-white.svg');
+      }
+    }
+  }
 }

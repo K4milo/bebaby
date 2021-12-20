@@ -1,14 +1,36 @@
 .card-product {
   background-color: $white;
   margin-bottom: rem(30px);
+  position: relative;
+  transition: all .35s ease-in-out;
+
+  $self: &;
+
+  @include from(l) {
+    min-height: rem(385px);
+  }
 
   &__thumbnail {
-    padding: rem(15px) rem(50px) 0;
+    padding: rem(15px) rem(60px) 0;
+    text-align: center;
+
+    img {
+      display: inline-block;
+      height: rem(206px);
+      transition: all .35s ease-in-out;
+      width: auto;
+    }
   }
 
   &__caption {
     padding: rem(5px) rem(20px) rem(16px);
     text-align: center;
+
+    h2 {
+      @extend %h3;
+
+      color: $brand-bg;
+    }
   }
 
   &__title {
@@ -16,5 +38,59 @@
 
     color: $blue;
     text-decoration: none;
+  }
+
+  &__price {
+    text-align: center;
+
+    &-ammount {
+      @extend %h3;
+
+      background-color: $sun;
+      color: $white;
+      display: inline-block;
+      padding: rem(5px);
+    }
+
+    .price {
+      @extend %h3;
+
+      color: $blue;
+    }
+  }
+
+  &__ctas {
+    @include from(l) {
+      bottom: 0;
+      left: 0;
+      position: absolute;
+      width: 100%;
+      padding: 0 15%;
+    }
+  }
+
+  &:hover {
+    box-shadow: 0 0 rem(10px) rgba($brand-bg, .05);
+
+    #{$self}__thumbnail {
+      img {
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  &--home {
+    @include from(l) {
+      min-height: rem(370px);
+    }
+
+    #{$self}__price {
+      @include from(l) {
+        bottom: rem(20px);
+        left: 0;
+        position: absolute;
+        width: 100%;
+      }
+    }
   }
 }

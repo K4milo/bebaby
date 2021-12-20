@@ -1,0 +1,17 @@
+.category-cards {
+  background: $blue-2;
+  padding: rem(45px) 0;
+  text-align: center;
+
+  &__heading {
+    padding-bottom: rem(20px);
+  }
+
+  &__title {
+    @extend %h1;
+
+    color: $white;
+    display: inline-block;
+    padding: rem(2px) rem(6px);
+  }
+}

@@ -5,14 +5,7 @@
     </div>
     <hr/>
     <div class="row">
-      <div class="col-lg-3 site-footer__bottom">
-        <p><a href="/terminos-y-condiciones/" target=_blank>Términos y Condiciones</a> </p>
-      </div>
-      <div class="col-lg-3 site-footer__bottom">
-        <p> <a href="/politicas-de-uso/" target=_blank>Políticas de uso </a></p>
-      </div>
-      <div class="col-lg-3 site-footer__bottom"></div>
-      <div class="col-lg-3 site-footer__bottom">
+      <div class="site-footer__bottom">
         <p>&copy; <?php echo date('Y'); ?> <a href="<?php echo home_url('/'); ?>"><?php bloginfo('name'); ?></a></p>
       </div>
     </div>

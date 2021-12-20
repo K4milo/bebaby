@@ -18,12 +18,11 @@ if( $featured_posts ): ?>
         $post = $post['featured_product'];
         setup_postdata($post);
         $product = wc_get_product( $post->ID );
-        $sale_price =  $product->get_variation_regular_price( 'min', true );
-        $regular_price =  $product->get_variation_regular_price( 'max', true );
+        $sale_price = wc_custom_variation_price_format( $product->get_variation_price(), $product );
         ?>
 
         <div class="col-lg-3 featured-products__item">
-          <article class="card-product">
+          <article class="card-product card-product--home">
             <a href="<?php the_permalink(); ?>">
               <figure class="card-product__thumbnail">
                 <?php the_post_thumbnail('large');?>
@@ -35,7 +34,11 @@ if( $featured_posts ): ?>
                   <?php the_title(); ?>
                 </a>
               </h3>
-              <?php echo $sale_price . $regular_price; ?>
+              <div class="card-product__price">
+                <span class="card-product__price-ammount">
+                  <?php echo $sale_price; ?>
+                </span>
+              </div>
             </div>
           </article>
         </div>

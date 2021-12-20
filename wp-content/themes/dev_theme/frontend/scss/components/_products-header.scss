@@ -1,0 +1,16 @@
+body {
+  .content-area {
+    .woocommerce-products-header {
+      border-bottom: rem(2px) solid $brand-bg;
+      text-align: center;
+
+      @include from(l) {
+        padding: rem(40px) 0;
+      }
+
+      &__title {
+        color: $brand-bg;
+      }
+    }
+  }
+}

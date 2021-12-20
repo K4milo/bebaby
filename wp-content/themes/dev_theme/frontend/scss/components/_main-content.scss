@@ -1,0 +1,56 @@
+.main-content {
+  &__header {
+    border-bottom: rem(2px) solid $brand-bg;
+    text-align: center;
+
+    @include from(l) {
+      padding: rem(40px) 0;
+    }
+  }
+
+  &__title {
+    color: $brand-bg;
+  }
+
+  &__link {
+    display: block;
+    max-width: rem(540px);
+    margin: 0 auto;
+    text-decoration: none;
+
+    i {
+      color: $blue;
+      display: inline-block;
+      margin-right: rem(5px);
+    }
+  }
+}
+
+
+.page-id-254 {
+  .main-content {
+    &__body {
+      text-align: center;
+
+      label,
+      span {
+        display: block;
+      }
+
+      .wpcf7 {
+        text-align: left;
+        max-width: rem(540px);
+        margin: rem(12px) auto;
+      }
+
+      .wpcf7-form-control {
+        width: 100%;
+      }
+
+      .wpcf7-textarea {
+        width: 100%;
+        max-height: rem(90px);
+      }
+    }
+  }
+}

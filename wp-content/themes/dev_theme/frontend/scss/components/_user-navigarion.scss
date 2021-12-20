@@ -1,0 +1,26 @@
+.user-navigarion {
+  display: block;
+  margin-bottom: rem(40px);
+  width: 100%;
+
+  $self: &;
+
+  &__item {
+    display: block;
+
+    &.is-active {
+      #{$self}__link {
+        background-color: $skin;
+        color: $white;
+      }
+    }
+  }
+
+  &__link {
+    border: rem(1px) solid rgba($brand-bg, .2);
+    display: block;
+    padding: rem(5px) rem(12px);
+    text-decoration: none;
+    width: 100%;
+  }
+}

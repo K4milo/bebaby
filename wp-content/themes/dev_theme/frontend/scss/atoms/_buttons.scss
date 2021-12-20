@@ -1,0 +1,36 @@
+button.woocommerce-button {
+  background-color: $blue;
+  color: $white;
+  transition: all .3s ease-in-out;
+
+  &:hover {
+    background-color: $navy;
+  }
+}
+
+.button.add_to_cart_button,
+.button.product_type_variable.add_to_cart_button {
+  background: transparent;
+  border: rem(2px) solid $sun;
+  color: $brand-bg;
+  display: block;
+  padding: rem(5px);
+  transition: all .3s ease-in-out;
+
+  &:hover {
+    background-color: $sun;
+    color: $brand-bg;
+  }
+}
+
+.wpcf7-form-control.has-spinner.wpcf7-submit,
+.checkout-button.button.alt.wc-forward,
+.single_add_to_cart_button.button:not(.disabled) {
+  background-color: $blue;
+  color: $white;
+  transition: all .3s ease-in-out;
+
+  &:hover {
+    background-color: $navy;
+  }
+}

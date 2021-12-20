@@ -1,12 +1,13 @@
 .site-footer {
-  background-color: $brand-white;
+  background-color: $skin;
   box-shadow: 0 0 rem(10px) $grey-lt;
   color: $grey;
-  overflow: hidden;
+  clear: both;
+  display: block;
 
   a {
-    @extend %body-m;
-    color: $grey;
+    @extend %body-s;
+    color: $white;
     text-decoration: none;
 
     &:hover {
@@ -38,17 +39,49 @@
 
   &__widget {
     .menu {
-      > li {
+      .menu-item {
         display: block;
-        line-height: 2;
+        line-height: 1.4;
+        padding: 0;
 
-        > a {
-          font-weight: bold;
-        }
-
-        &.menu-item-138 {
+        &::before {
           display: none;
         }
+
+        i {
+          background-color: $text;
+          border-radius: 100%;
+          color: $white;
+          display: inline-block;
+          font-size: rem(16px);
+          line-height: rem(25px);
+          height: rem(25px);
+          text-align: center;
+          width: rem(25px);
+        }
+      }
+    }
+
+    .wpcf7-form {
+      h2 {
+        @extend %h3;
+      }
+
+      .wpcf7-list-item {
+        margin: 0;
+      }
+
+      .wpcf7-form-control-wrap {
+        display: block;
+        margin-bottom: rem(4px);
+
+        input[type=text], input[type=number], input[type=email] {
+          width: 100%;
+        }
+      }
+
+      br {
+        display: none;
       }
     }
 
@@ -58,23 +91,6 @@
       > li {
         display: block;
       }
-    }
-  }
-
-  &__widget--nav_menu-3 {
-    .menu {
-      > li {
-        > a {
-          font-weight: normal;
-        }
-      }
-    }
-  }
-
-  &__widget--text-2 {
-    ul li {
-      display: block;
-      margin-bottom: rem(10px);
     }
   }
 }

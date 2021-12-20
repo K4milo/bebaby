@@ -167,7 +167,7 @@ if ( ! function_exists( 'storefront_sorting_wrapper' ) ) {
 	 * @return  void
 	 */
 	function storefront_sorting_wrapper() {
-		echo '<div class="storefront-sorting">';
+		echo '<div class="storefront-sorting container py-5">';
 	}
 }
 

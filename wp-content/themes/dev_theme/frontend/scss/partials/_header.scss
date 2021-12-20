@@ -18,6 +18,8 @@
     margin-left: auto;
   }
   &__nav {
+    margin-left: auto;
+
     > li {
       @include from (l) {
         margin-left: rem(60px);

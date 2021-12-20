@@ -53,6 +53,12 @@
   text-transform: uppercase;
 }
 
+// General typography behavs
+
+body {
+  color: $text;
+}
+
 h1 {
   @extend %h1;
 }
@@ -67,5 +73,11 @@ h3 {
 
 p, ul, ol {
   @extend %body-m;
+}
+
+a {
+  @extend %body-m;
+
+  color: $brand-bg;
 }
 
