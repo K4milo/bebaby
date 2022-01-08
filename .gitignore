@@ -24,6 +24,7 @@ node_modules/
 *.zip
 *.gz
 *.rar
+*.htaccess
 
 
 license.txt
