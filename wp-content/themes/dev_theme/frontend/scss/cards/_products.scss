@@ -1,4 +1,5 @@
-.card-product {
+.product .card-product,
+.card-product  {
   background-color: $white;
   margin-bottom: rem(30px);
   position: relative;
@@ -7,6 +8,10 @@
   $self: &;
 
   @include from(l) {
+    min-height: rem(435px);
+  }
+
+  @include from(xl) {
     min-height: rem(385px);
   }
 
@@ -53,8 +58,7 @@
     }
 
     .price {
-      @extend %h3;
-
+      @extend %body;
       color: $blue;
     }
   }

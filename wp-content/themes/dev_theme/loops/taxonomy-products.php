@@ -31,6 +31,9 @@ if ($categories): ?>
           </a>
           <div class="card-category__caption">
             <h3 class="card-category__title"><?php echo $cat_name; ?></h3>
+            <div class="card-category__body">
+              <?php echo $cat_description; ?>
+            </div>
           </div>
         </article>
       </div>
@@ -40,5 +43,7 @@ if ($categories): ?>
     </div>
   </div>
 </section>
+<img src="<?php echo get_stylesheet_directory_uri(); ?>/img/pattern-banner.jpg"
+    aria-role="presentation" class="img-fluid"/>
 <?php
 endif;

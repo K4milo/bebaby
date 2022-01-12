@@ -13,10 +13,6 @@
     img {
       object-fit: cover;
       object-position: center;
-
-      @include from(l) {
-        object-position: 0 rem(-114px);
-      }
     }
 
     @include from(l) {
@@ -34,18 +30,28 @@
     left: 5%;
 
     @include from(l) {
-      left: 20%;
+      left: 10%;
     }
   }
 
   &__title {
     @extend %h1;
     display: inline;
-    background-color: $brand-bg;
+    background-color: $blue;
     box-decoration-break: clone;
-    box-shadow: 0.5em 0 0 $brand-bg,-0.5em 0 0 $brand-bg;
+    box-shadow: 0.5em 0 0 $blue,-0.5em 0 0 $blue;
     color: $white;
-    line-height: rem(55px);
+    line-height: rem(65px);
+  }
+
+  &__cta {
+    @extend %h3;
+
+    background-color: $skin;
+    color: $white;
+    display: inline-block;
+    margin: rem(10px) 0 0 rem(-20px);
+    padding: rem(5px) rem(16px);
   }
 
   &__pagination {

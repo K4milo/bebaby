@@ -18,11 +18,12 @@
         while(have_rows('main_slider')): the_row();
         $ms_image = get_sub_field('main_slider__desktop');
         $ms_image_mobile = get_sub_field('main_slider__mobile');
-        $ms_link = get_sub_field('main_slider__cta');
+        $ms_link = get_sub_field('main_slider__link');
+        $ms_text = get_sub_field('main_slider__text');
       ?>
       <div class="main-slider__item">
         <?php if ($ms_link) : ?>
-          <a href="<?php echo $ms_link; ?>">
+          <a href="<?php echo $ms_link['url']; ?>">
         <?php endif; ?>
         <picture class="main-slider__image">
           <?php if ($ms_image_mobile) : ?>
@@ -32,6 +33,18 @@
             <img src="<?php echo esc_url($ms_image['url']); ?>" alt="<?php echo esc_attr($ms_image['alt']); ?>"/>
           <?php endif; ?>
         </picture>
+        <?php if ($ms_text): ?>
+          <div class="main-slider__caption">
+            <h2 class="main-slider__title">
+              <?php echo $ms_text; ?>
+            </h2>
+            <div>
+              <span class="main-slider__cta">
+                <?php echo $ms_link['title']; ?>
+              </span>
+            </div>
+          </div>
+        <?php endif; ?>
         <?php if ($ms_link) : ?>
           </a>
         <?php endif; ?>

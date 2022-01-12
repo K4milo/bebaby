@@ -18,7 +18,6 @@ if( $featured_posts ): ?>
         $post = $post['featured_product'];
         setup_postdata($post);
         $product = wc_get_product( $post->ID );
-        $sale_price = wc_custom_variation_price_format( $product->get_variation_price(), $product );
         ?>
 
         <div class="col-lg-3 featured-products__item">
@@ -36,7 +35,7 @@ if( $featured_posts ): ?>
               </h3>
               <div class="card-product__price">
                 <span class="card-product__price-ammount">
-                  <?php echo $sale_price; ?>
+                  <?php echo $product->get_price_html(); ?>
                 </span>
               </div>
             </div>

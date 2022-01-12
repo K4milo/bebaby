@@ -11,6 +11,7 @@ if (sliderInstance) {
     slidesToShow: 1,
     slidesToScroll: 1,
     variableHeight: true,
+    infinite: true,
     arrows: true,
     dots: true
   }
