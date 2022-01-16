@@ -12,6 +12,7 @@ if (sliderInstance) {
     slidesToScroll: 1,
     variableHeight: true,
     arrows: true,
+    infinite: true,
     dots: true
   }
 

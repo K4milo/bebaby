@@ -1,18 +1,18 @@
 button.woocommerce-button {
-  background-color: $blue;
+  background-color: $rose;
   color: $white;
   transition: all .3s ease-in-out;
 
   &:hover {
-    background-color: $navy;
+    background-color: $black;
   }
 }
 
 .button.add_to_cart_button,
 .button.product_type_variable.add_to_cart_button {
-  background: transparent;
-  border: rem(2px) solid $sun;
-  color: $brand-bg;
+  background: $gold;
+  border: rem(2px) solid $gold;
+  color: $white;
   display: block;
   padding: rem(5px);
   transition: all .3s ease-in-out;
@@ -31,6 +31,29 @@ button.woocommerce-button {
   transition: all .3s ease-in-out;
 
   &:hover {
-    background-color: $navy;
+    background-color: $coffee;
+  }
+}
+
+.button {
+  display: inline-block;
+  padding: rem(10px) rem(16px);
+
+  $self: &;
+
+  &__content {
+    @extend %body-btn;
+
+    text-align: center;
+  }
+
+  &--outlined {
+    background-color: transparent;
+    border: rem(2px) solid;
+    color: $white;
+
+    #{$self}__content {
+      color: $white;
+    }
   }
 }

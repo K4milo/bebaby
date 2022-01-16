@@ -11,7 +11,7 @@ if ($categories): ?>
 <section class="category-cards">
   <div class="container">
     <header class="category-cards__heading">
-      <h2 class="category-cards__title">Lineas de Producto</h2>
+      <h2 class="category-cards__title">Shop by</h2>
     </header>
     <div class="row">
     <?php
@@ -22,9 +22,9 @@ if ($categories): ?>
         $cat_description = $category->description;
         $thumbnail_id = get_woocommerce_term_meta($cat_id, 'thumbnail_id', true);
         $cat_image = wp_get_attachment_url($thumbnail_id); ?>
-      <div class="col-lg-4 col-md-6">
+      <div class="col-lg-4 col-md-6 mb-3">
         <article class="card-category">
-          <a href="/categoria-producto/<?php echo $cat_slug; ?>">
+          <a href="/product-category/<?php echo $cat_slug; ?>">
             <figure class="card-category__image">
               <img src="<?php echo $cat_image; ?>" class="img-fluid" />
             </figure>

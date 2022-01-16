@@ -1,0 +1,29 @@
+.follow-us {
+  background-color: $coffee;
+  padding: rem(16px);
+
+  &__text {
+    text-align: center;
+  }
+
+  &__link {
+    color: $white;
+    text-decoration: none;
+
+    &:hover {
+      color: $white;
+    }
+  }
+
+  i {
+    background-color: $black;
+    border-radius: 100%;
+    display: inline-block;
+    margin-right: rem(16px);
+    font-size: rem(30px);
+    height: rem(45px);
+    line-height: rem(45px);
+    text-align: center;
+    width: rem(45px);
+  }
+}

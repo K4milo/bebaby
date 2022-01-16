@@ -1,32 +1,51 @@
 .main-menu {
-  background-color: $bone;
-  border-bottom: rem(1px) solid rgba($brand-bg, .2);
-  border-top: rem(1px) solid rgba($brand-bg, .2);
+  background-color: $black;
+  border-bottom: rem(1px) solid rgba($gold, .2);
+  border-top: rem(1px) solid rgba($gold, .2);
 
   &__logo {
     @include iconBg('../images/brand/logo.svg');
     width: rem(120px);
-    height: rem(48px);
+    height: rem(106px);
 
     @include from(l) {
       width: rem(180px);
-      height: rem(93px);
+      height: rem(163px);
     }
   }
 
   .menu-menu-principal-container {
     margin-left: auto;
   }
+
+  &__wrapper {
+    @include from (l) {
+      justify-content: center;
+    }
+  }
+
+  .navbar-toggler-icon {
+    color: $gold;
+
+    i {
+      line-height: rem(30px);
+    }
+  }
+
   &__nav {
     margin-left: auto;
 
     > li {
       @include from (l) {
         margin-left: rem(60px);
+
+        &:first-child {
+          margin-left: 0;
+        }
       }
 
       .dropdown-menu {
-        background-color: $white;
+        background-color: $grey;
         border-radius: 0;
         min-width: rem(270px);
 
@@ -36,30 +55,35 @@
           a {
             @extend %body;
 
-            color: $brand-bg;
+            color: $gold;
             display: block;
-            padding: rem(16px);
+            padding: rem(5px) rem(16px);
 
             &:hover {
-              background-color: $brand-white;
+              background-color: $black;
             }
 
             @include from (l) {
-              padding: rem(25px) rem(50px);
+              padding: rem(15px) rem(50px);
             }
           }
         }
       }
     }
   }
+
   &__link {
-    color: $brand-bg;
+    color: $gold;
     padding: rem(16px);
     text-align: center;
 
     @include from(l) {
       text-align: left;
       padding: inherit;
+    }
+
+    &:hover {
+      color: $brand-white;
     }
   }
 }

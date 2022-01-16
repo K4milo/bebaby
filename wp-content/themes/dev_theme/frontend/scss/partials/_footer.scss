@@ -1,7 +1,6 @@
 .site-footer {
-  background-color: $skin;
-  box-shadow: 0 0 rem(10px) $grey-lt;
-  color: $grey;
+  background-color: $black;
+  color: $white;
   clear: both;
   display: block;
 
@@ -38,26 +37,64 @@
   }
 
   &__widget {
-    .menu {
-      .menu-item {
-        display: block;
-        line-height: 1.4;
-        padding: 0;
+    .widget {
+      color: $white;
 
-        &::before {
-          display: none;
+      h2, h3, .widget-title {
+        color: $white;
+      }
+
+      a {
+        color: $white;
+
+        &:hover {
+          color: $gold;
         }
+      }
 
-        i {
-          background-color: $text;
-          border-radius: 100%;
-          color: $white;
+      .wp-block-image {
+
+        img {
           display: inline-block;
-          font-size: rem(16px);
-          line-height: rem(25px);
-          height: rem(25px);
-          text-align: center;
-          width: rem(25px);
+          max-width: 65%;
+          height: auto;
+        }
+      }
+
+      .menu {
+        .menu-item {
+          color: $white;
+          display: block;
+          line-height: 1.4;
+          padding: 0;
+          text-transform: uppercase;
+
+          &::before {
+            display: none;
+          }
+
+          i {
+            background-color: $text;
+            border-radius: 100%;
+            color: $white;
+            display: inline-block;
+            font-size: rem(16px);
+            line-height: rem(25px);
+            height: rem(25px);
+            text-align: center;
+            width: rem(25px);
+          }
+
+          a {
+            @extend %body-s;
+            color: $white;
+            text-decoration: none;
+
+            &:hover {
+              color: $brand-bg;
+            }
+          }
+
         }
       }
     }

@@ -1,4 +1,9 @@
 .menu-account {
+  height: 100%;
+  position: relative;
+  width: 100%;
+  z-index: 10;
+
   $self: &;
 
   &__wrapper {
@@ -7,7 +12,10 @@
     margin: rem(12px) 0;
 
     @include from(l) {
+      @include center('vertical');
+
       justify-content: flex-end;
+      right: 0;
     }
   }
 
@@ -24,7 +32,7 @@
   }
 
   &__icon {
-    background-color: $skin;
+    background-color: $gold;
     border-radius: 100%;
     color: $brand-bg;
     cursor: pointer;

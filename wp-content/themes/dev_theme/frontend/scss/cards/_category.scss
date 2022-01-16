@@ -14,17 +14,13 @@
       object-position: center;
       transition: all 1s ease-in-out;
     }
-
-    @include from(l) {
-      @include fluid-aspect(3 4, 'img');
-    }
   }
 
   &__caption {
-    background-color: rgba($skin, .85);
+    background-color: rgba($black, .85);
     bottom: 0;
     display: flex;
-    color: $white;
+    color: $gold;
     justify-content: center;
     padding: rem(16px);
     position: absolute;

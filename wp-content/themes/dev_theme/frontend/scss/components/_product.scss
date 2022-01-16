@@ -1,12 +1,16 @@
 .product {
   &__title {
-    color: $brand-bg;
+    color: $black;
   }
 
   .price {
     @extend %h2;
 
-    color: $blue;
+    color: $coffee;
     font-size: rem(32px);
   }
+}
+
+.storefront-product-pagination {
+  display: none;
 }

@@ -18,6 +18,26 @@
   font-size: rem(22px);
 }
 
+%hslider-1 {
+  font-family: $bd;
+  font-weight: 900;
+  font-size: rem(46px);
+
+  @include from(l) {
+    font-size: rem(76px);
+  }
+}
+
+%eyebrow {
+  font-family: $rg;
+  font-size: rem(20px);
+  text-transform: uppercase;
+
+  @include from(l) {
+    font-size: rem(26px);
+  }
+}
+
 %body {
   font-family: $rg;
   font-weight: 300;
@@ -43,8 +63,10 @@
 
 %body-btn {
   color: $brand-bg;
-  font-family: $bd;
+  font-family: $rg;
   font-size: rem(16px);
+  text-transform: uppercase;
+  letter-spacing: rem(2.2px);
 }
 
 %tag {
@@ -56,7 +78,7 @@
 // General typography behavs
 
 body {
-  color: $text;
+  color: $black;
 }
 
 h1 {

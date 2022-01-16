@@ -1,24 +1,30 @@
 .card-product {
   background-color: $white;
-  margin-bottom: rem(30px);
+  margin-bottom: rem(70px);
   position: relative;
   transition: all .35s ease-in-out;
 
   $self: &;
 
   @include from(l) {
-    min-height: rem(385px);
+    min-height: rem(405px);
+  }
+
+  @include from(xl) {
+    min-height: rem(445px);
   }
 
   &__thumbnail {
-    padding: rem(15px) rem(60px) 0;
-    text-align: center;
+    @include fluid-aspect(1 1, 'img');
+
+    display: block;
+    margin: 0 0 rem(10px);
+    overflow: hidden;
 
     img {
-      display: inline-block;
-      height: rem(206px);
-      transition: all .35s ease-in-out;
-      width: auto;
+      object-fit: cover;
+      object-position: center;
+      transition: all 1s ease-in-out;
     }
   }
 
@@ -29,14 +35,14 @@
     h2 {
       @extend %h3;
 
-      color: $brand-bg;
+      color: $black;
     }
   }
 
   &__title {
     @extend %h3;
 
-    color: $blue;
+    color: $black;
     text-decoration: none;
   }
 
@@ -46,7 +52,7 @@
     &-ammount {
       @extend %h3;
 
-      background-color: $sun;
+      background-color: $coffee;
       color: $white;
       display: inline-block;
       padding: rem(5px);
@@ -55,7 +61,7 @@
     .price {
       @extend %h3;
 
-      color: $blue;
+      color: $coffee;
     }
   }
 
@@ -81,7 +87,7 @@
 
   &--home {
     @include from(l) {
-      min-height: rem(370px);
+      min-height: rem(450px);
     }
 
     #{$self}__price {

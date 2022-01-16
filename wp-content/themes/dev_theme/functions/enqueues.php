@@ -13,7 +13,7 @@ function bst_enqueues() {
   wp_register_style('fa-icons', '//cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css', false, '5.15.3', null);
 	wp_enqueue_style('fa-icons');
 
-  wp_register_style('fonts-css', '//fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;900&display=swap', false, '1.0', null);
+  wp_register_style('fonts-css', '//fonts.googleapis.com/css2?family=PT+Serif:wght@400;700&display=swap', false, '1.0', null);
 	wp_enqueue_style('fonts-css');
 
   wp_register_style('poppins-css', '//fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;900&display=swap&display=swap', false, '1.0', null);
