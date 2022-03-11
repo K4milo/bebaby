@@ -21,7 +21,7 @@ class WC_Stripe_Redirect_Handler {
 	public static function local_payment_redirect() {
 		if ( isset( $_GET['_stripe_local_payment'] ) ) {
 			self::process_redirect();
-		} elseif ( isset( $_GET['_stripe_voucher_payment'], $_GET['order-id'] ) ) {
+		} elseif ( isset( $_GET[ WC_Stripe_Constants::VOUCHER_PAYMENT ], $_GET['order-id'] ) ) {
 			self::process_voucher_redirect();
 		}
 	}
@@ -104,9 +104,10 @@ class WC_Stripe_Redirect_Handler {
 		/**
 		 * @var \WC_Payment_Gateway_Stripe $payment_method
 		 */
-		$payment_method = WC()->payment_gateways()->payment_gateways()[ $payment_method ];
-		$order          = wc_get_order( absint( wc_clean( $_GET['order-id'] ) ) );
-		$order_key      = isset( $_GET['order-key'] ) ? wc_clean( wp_unslash( $_GET['order-key'] ) ) : '';
+		$payment_methods = WC()->payment_gateways()->payment_gateways();
+		$payment_method  = $payment_methods[ $payment_method ];
+		$order           = wc_get_order( absint( wc_clean( $_GET['order-id'] ) ) );
+		$order_key       = isset( $_GET['order-key'] ) ? wc_clean( wp_unslash( $_GET['order-key'] ) ) : '';
 		if ( $order && hash_equals( $order->get_order_key(), $order_key ) ) {
 			if ( method_exists( $payment_method, 'process_voucher_order_status' ) ) {
 				$payment_method->process_voucher_order_status( $order );

@@ -67,7 +67,7 @@
         return $('#wc_stripe_checkout_error').length > 0 && this.is_gateway_selected();
     };
 
-    wc_stripe.BaseGateway.prototype.submit_error = function (error) {
+    wc_stripe.BaseGateway.prototype.submit_error = function (error, skip_form) {
         var message = this.get_error_message(error);
 
         if (message.indexOf('</ul>') < 0) {
@@ -82,7 +82,7 @@
         }
         var custom_message = $(document.body).triggerHandler('wc_stripe_submit_error', [message, error, this]);
         message = typeof custom_message === 'undefined' ? message : custom_message;
-        this.submit_message(message);
+        this.submit_message(message, skip_form);
     };
 
     wc_stripe.BaseGateway.prototype.submit_error_code = function (code) {
@@ -101,11 +101,11 @@
         return message;
     };
 
-    wc_stripe.BaseGateway.prototype.submit_message = function (message) {
-        $('.woocommerce-error, .woocommerce-message, .woocommerce-info').remove();
+    wc_stripe.BaseGateway.prototype.submit_message = function (message, skip_form) {
+        $('.woocommerce-NoticeGroup-checkout, .woocommerce-error, .woocommerce-message').remove();
         var $container = $(this.message_container);
 
-        if ($container.closest('form').length) {
+        if (!$container.length || (!skip_form && $container.closest('form').length)) {
             $container = $container.closest('form');
         }
 
@@ -123,15 +123,16 @@
     };
 
     wc_stripe.BaseGateway.prototype.get_billing_details = function () {
+        var prefix = this.get_billing_prefix();
         var details = {
-            name: this.get_customer_name('billing'),
+            name: this.get_customer_name(prefix),
             address: {
-                city: this.fields.get('billing_city', null),
-                country: this.fields.get('billing_country', null),
-                line1: this.fields.get('billing_address_1', null),
-                line2: this.fields.get('billing_address_2', null),
-                postal_code: this.fields.get('billing_postcode', null),
-                state: this.fields.get('billing_state', null)
+                city: this.fields.get(prefix + '_city', null),
+                country: this.fields.get(prefix + '_country', null),
+                line1: this.fields.get(prefix + '_address_1', null),
+                line2: this.fields.get(prefix + '_address_2', null),
+                postal_code: this.fields.get(prefix + '_postcode', null),
+                state: this.fields.get(prefix + '_state', null)
             }
         }
         if (!details.name || details.name === ' ') {
@@ -165,9 +166,19 @@
      * Some 3rd party plugins give priority to the shipping address over the billing address
      */
     wc_stripe.BaseGateway.prototype.get_billing_prefix = function () {
-        if ($('[name="billing_same_as_shipping"]').length && !$('[name="billing_same_as_shipping"]').is(':checked')) {
+        if ($('[name="billing_same_as_shipping"]').length && $('[name="billing_same_as_shipping"]').is(':checked')) {
             return 'shipping';
         }
+        if ($('[name="bill_to_different_address"]').length) {
+            if ($('[name="bill_to_different_address"]').length > 1) {
+                if ($('[name="bill_to_different_address"]:checked').val() === 'same_as_shipping') {
+                    return 'shipping';
+                }
+            } else if (!$('[name="bill_to_different_address"]').is(':checked')) {
+                return 'shipping';
+            }
+        }
+
         return 'billing';
     }
 

@@ -77,7 +77,7 @@ class WC_Stripe_Payment_Intent extends WC_Stripe_Payment {
 			// If the payment method isn't synchronous, set its status to on-hold so if the customer
 			// skips the redirect and the payment takes 1 or more days, the payment won't be cancelled
 			// due to the WooCommerce pending payment status.
-			if ( apply_filters( 'wc_stripe_asyncronous_payment_method_' . $this->payment_method->id, ! $this->payment_method->synchronous, $order, $this->payment_method ) ) {
+			if ( apply_filters( 'wc_stripe_asyncronous_payment_method_' . $this->payment_method->id, ! $this->payment_method->synchronous && ! $this->payment_method->is_voucher_payment, $order, $this->payment_method ) ) {
 				$order->update_status( 'on-hold' );
 			}
 

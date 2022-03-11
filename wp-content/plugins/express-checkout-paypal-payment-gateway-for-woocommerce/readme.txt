@@ -2,10 +2,10 @@
 Contributors: webtoffee
 Donate link: https://www.webtoffee.com/plugins/
 Tags: PayPal, express checkout, PayPal standard, payment, credit card, debit card, WooCommerce, cart page checkout, payment gateway, PayPal checkout
-Requires at least: 3.0.1
-Tested up to: 5.8.3
+Requires at least: 5.6
+Tested up to: 5.9
 Requires PHP: 5.6
-Stable tag: 1.6.6
+Stable tag: 1.6.9
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -38,11 +38,11 @@ PayPal Express Checkout payment gateway for WooCommerce is one of the best PayPa
 🔸 Customize each user-facing elements by various settings options
 🔸 Add invoice prefix to identify store order
 🔸 Faster checkout by skipping the order review page
-🔸 Tested OK with WooCommerce 6.0.0
+🔸 Tested OK with WooCommerce 6.2.0
 
 To learn about the installation and setup of this free WooCommerce PayPal plugin, visit the [plugin documentation](https://www.webtoffee.com/paypal-express-checkout-payment-gateway-woocommerce-user-guide/) page.
 
-To set up PayPal Smart Button, refer to the [set up video](https://www.youtube.com/watch?v=zKRREFIYmFA)
+To set up PayPal Smart Button, refer to this set up video [youtube https://www.youtube.com/watch?v=zKRREFIYmFA]
 
 ##Pro version##
 
@@ -117,6 +117,18 @@ PayPal is available in more than 200 countries/regions and support 25 currencies
 
 == Changelog ==
 
+= 1.6.9 =
+* [Fix] - Fixed issue when sending product description to PayPal
+
+= 1.6.8 =
+* [Compatibility] - WC 6.2.0
+* [Fix] - Fixed issue of sending empty address details to PayPal when state is not mandatory
+
+= 1.6.7 =
+* [Compatibility] - WC 6.1.1
+* [Compatibility] - WP 5.9
+* [Fix] - Fixed issue while applying coupon
+* [Compatibility] - Fixed compatibility issue while applying store credit coupon of Webtoffee smart coupon plugin
 
 = 1.6.6 =
 * [Compatibility] - WP 5.8.3
@@ -348,7 +360,5 @@ PayPal is available in more than 200 countries/regions and support 25 currencies
 
 == Upgrade Notice ==
 
-= 1.6.6 =
-* [Compatibility] - WP 5.8.3
-* [Tweak] - Added filter to alter order details
-* [Fix] - Fixed invalid request URL error indicating invalid cancel URL
+= 1.6.9 =
+* [Fix] - Fixed issue when sending product description to PayPal

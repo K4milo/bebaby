@@ -18,6 +18,8 @@ class WC_Payment_Gateway_Stripe_OXXO extends WC_Payment_Gateway_Stripe_Local_Pay
 
 	public $synchronous = false;
 
+	public $is_voucher_payment = true;
+
 	use WC_Stripe_Local_Payment_Intent_Trait;
 
 	public function __construct() {
@@ -30,11 +32,6 @@ class WC_Payment_Gateway_Stripe_OXXO extends WC_Payment_Gateway_Stripe_Local_Pay
 		$this->method_description = __( 'OXXO gateway that integrates with your Stripe account.', 'woo-stripe-payment' );
 		$this->icon               = stripe_wc()->assets_url( 'img/oxxo.svg' );
 		parent::__construct();
-	}
-
-	public function hooks() {
-		parent::hooks();
-		add_filter( 'wc_stripe_asyncronous_payment_method_stripe_oxxo', '__return_false' );
 	}
 
 	public function get_local_payment_settings() {
@@ -107,9 +104,9 @@ class WC_Payment_Gateway_Stripe_OXXO extends WC_Payment_Gateway_Stripe_Local_Pay
 	public function get_return_url( $order = null ) {
 		if ( $this->processing_payment && $order ) {
 			return add_query_arg( array(
-				'_stripe_voucher_payment' => $this->id,
-				'order-id'                => $order->get_id(),
-				'order-key'               => $order->get_order_key()
+				WC_Stripe_Constants::VOUCHER_PAYMENT => $this->id,
+				'order-id'                           => $order->get_id(),
+				'order-key'                          => $order->get_order_key()
 			), wc_get_checkout_url() );
 		}
 

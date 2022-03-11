@@ -197,39 +197,47 @@ class Eh_Rest_Request_Built {
 
             $wt_skip_line_items = $this->wt_skip_line_items(); // if tax enabled and when product has inclusive tax  
             foreach ($cart_item as $item) 
-            {
+            { 
                 $cart_product       = $item['data'];
                 $line_item_title    = $cart_product->get_title();
                 $desc_temp          = array();
-                foreach ($item['variation'] as $key => $value) 
-                {
-                    $desc_temp[]    = wc_attribute_label(str_replace('attribute_','',$key)).' : '.$value;
-                }
-                $line_item_desc     = implode(', ', $desc_temp);
-                $line_item_url      = $cart_product->get_permalink();
+                $line_item_desc     = ''; 
+                if (isset($item['variation']) && !empty($item['variation'])) {
+                    foreach ($item['variation'] as $key => $value) 
+                    {
+                        $desc_temp[]    = wc_attribute_label(str_replace('attribute_','',$key)).' : '.$value;
+                    }
+                    $line_item_desc     = implode(', ', $desc_temp);  
 
+                    //check whether description length exceed the limit   
+                    if(!empty($line_item_desc) && strlen($line_item_desc) > 127){
+                       $line_item_desc = substr($line_item_desc, 0, 127);
+                    }
+
+                }
+
+
+                $line_item_url      = $cart_product->get_permalink();
+                $line_item_quan     = $item['quantity'];
+                $line_item_total    = $item['line_subtotal']/$line_item_quan;
+                
                 if( $wt_skip_line_items ){   // if tax enabled and when product has inclusive tax  
                     
 
                      $this->add_line_items (array(
 
-                        'name'      => $line_item_title.' x '.$item['quantity'],
+                        'name'      => $line_item_title.' x '.$line_item_quan,
                         'description' => $line_item_desc,
-                        'quantity' => $item['quantity'],
+                        'quantity' => $line_item_quan,
                         'unit_amount' => array(
                             'currency_code' => $this->currency_code,
-                            'value' => $this->make_paypal_amount(($item['line_subtotal'] / $item['quantity']), $this->currency_code)
+                            'value' => $this->make_paypal_amount($line_item_total, $this->currency_code)
                         ),
                                 //'ITEMURL'   => $line_item_url
                     ), $i++ );      
-                    
-
-                    $line_item_total_amount  = $line_item_total_amount + $this->make_paypal_amount($item['line_subtotal']);
-                    
+                                        
                 }else{
                     
-                    $line_item_quan     = $item['quantity'];
-                    $line_item_total    = $item['line_subtotal']/$line_item_quan;
                     $this->add_line_items( array(
 
                         'name' => $line_item_title,
@@ -241,13 +249,13 @@ class Eh_Rest_Request_Built {
                         'quantity' => $line_item_quan,
 
                     ), $i++);
-                    $total_amount = ($line_item_quan * $this->make_paypal_amount($line_item_total, $this->currency_code));
-                    $line_item_total_amount  = $line_item_total_amount + $total_amount;
                     
                 }
-            }     
-
-           if (WC()->cart->get_cart_discount_total() > 0) 
+                $total_amount = ($line_item_quan * $this->make_paypal_amount($line_item_total, $this->currency_code));
+                $line_item_total_amount  = $line_item_total_amount + $total_amount;
+            }   
+            
+           /*if (WC()->cart->get_cart_discount_total() > 0) 
             {
                 $cart_discount_amount = $this->make_paypal_amount(WC()->cart->get_cart_discount_total(), $this->currency_code);
 
@@ -271,16 +279,19 @@ class Eh_Rest_Request_Built {
                     $line_item_total_amount  = $line_item_total_amount + $this->make_paypal_amount( $fee_values->total, $this->currency_code);
                     
                 }
-            }
+            }*/
 
             //add line items amount and compares it with cart total amount to check for any total mismatch.cart_contents_total is line item total - doscount 
             $item_amount = $this->make_paypal_amount(WC()->cart->cart_contents_total + WC()->cart->fee_total, $this->currency_code);
 
-            if($line_item_total_amount != $item_amount){
-                $diff = $this->make_paypal_amount( $item_amount - $line_item_total_amount, $this->currency_code);
+            //sum of pric of all line item excluding tax
+            $cart_subtotal_ex_tax = 0;
+            $cart_subtotal_ex_tax = $this->make_paypal_amount(WC()->cart->subtotal_ex_tax, $this->currency_code);    
+            if($line_item_total_amount != $cart_subtotal_ex_tax){
+                $diff = $this->make_paypal_amount( $cart_subtotal_ex_tax - $line_item_total_amount, $this->currency_code);
                 if ( abs( $diff ) > 0.000001 && 0.0 !== (float) $diff ) {
                     //add extra line item if there is a total mismatch
-                    $this->add_line_items(array(
+                        $this->add_line_items(array(
                             'name'  => 'Extra line item',
                             'description'  => '',
                             'quantity'   => 1,
@@ -290,19 +301,29 @@ class Eh_Rest_Request_Built {
                             ),
 
                         ),  $i++ );
+                    
                 }
             }
 
             //handle mismatch due to rounded tax calculation
             $ship_discount_amount = 0; 
             $cart_total = $this->make_paypal_amount(WC()->cart->total, $this->currency_code);
+
             $cart_tax = $this->make_paypal_amount(WC()->cart->tax_total + WC()->cart->shipping_tax_total, $this->currency_code);
-            $cart_items_total = $item_amount + $this->make_paypal_amount(WC()->cart->shipping_total, $this->currency_code) + $cart_tax;
+
+            $cart_fee_total = $this->make_paypal_amount(WC()->cart->fee_total, $this->currency_code);
+
+            $cart_shipping_total = $this->make_paypal_amount(WC()->cart->shipping_total, $this->currency_code);
+
+            $cart_discount_total = $this->make_paypal_amount(abs(WC()->cart->get_cart_discount_total()), $this->currency_code);
+
+            $cart_items_total = ($cart_subtotal_ex_tax + $cart_shipping_total + $cart_tax + $cart_fee_total) - $cart_discount_total;
+
             if($cart_total != $cart_items_total){
                 if($cart_items_total < $cart_total){
                     $cart_tax += $cart_total - $cart_items_total;
                 }else{
-                    $ship_discount_amount += $this->make_paypal_amount($cart_total - $cart_items_total, $this->currency_code);
+                    $ship_discount_amount += $this->make_paypal_amount($cart_items_total - $cart_total, $this->currency_code);
                 }
             }
            
@@ -312,14 +333,11 @@ class Eh_Rest_Request_Built {
                 'breakdown' => array(
                     'item_total' => array(
                         'currency_code' => $this->currency_code,
-                        //'value' => $cart_total
-                        //'value' => $this->make_paypal_amount(WC()->cart->subtotal_ex_tax, $this->currency_code)
-                        'value' => $this->make_paypal_amount($item_amount, $this->currency_code)
-
+                        'value' => $this->make_paypal_amount($cart_subtotal_ex_tax, $this->currency_code)
                     ),
                     'shipping' => array(
                         'currency_code' => $this->currency_code,
-                        'value' => $this->make_paypal_amount(WC()->cart->shipping_total, $this->currency_code)
+                        'value' => $this->make_paypal_amount($cart_shipping_total, $this->currency_code)
                     ),
                     'tax_total' => array(
                        'currency_code' => $this->currency_code,
@@ -327,11 +345,11 @@ class Eh_Rest_Request_Built {
                     ),
                     'shipping_discount' => array(
                         'currency_code' => $this->currency_code,
-                        'value' => $this->make_paypal_amount($discount_amount + $ship_discount_amount, $this->currency_code)
+                        'value' => $this->make_paypal_amount(abs($discount_amount + $ship_discount_amount), $this->currency_code)
                     ),                   
                     'discount' => array(
                         'currency_code' => $this->currency_code,
-                        'value' => $this->make_paypal_amount(WC()->cart->discount_cart, $this->currency_code)
+                        'value' => $this->make_paypal_amount($cart_discount_total, $this->currency_code)
                     ),
 
                 )
@@ -485,106 +503,59 @@ class Eh_Rest_Request_Built {
         
         foreach ($order_item as $item)
         {
-            //add fee details to order line items
-            if ( 'fee' === $item['type'] ) {
+
+            $line_item_title    = $item['name'];
+            $desc_temp          = array();
+            foreach ($item as $key => $value) 
+            {
+                if(strstr($key, 'pa_'))
+                {
+                    $desc_temp[] = wc_attribute_label($key).' : '.$value;
+                }
+            }
+            $line_item_desc     = implode(', ', $desc_temp);
+            $line_item_quan     = $item['quantity'];
+            $line_item_total    = $item['line_subtotal']/$line_item_quan;
+            if( $wt_skip_line_items ){    
+
                 $this->add_line_items(                     
                     array(
-                        'name'      => $item['name'],
-                        'description'      => '',
+                        'name'      => $line_item_title.' x '.$line_item_quan,
+                        'description'      => $line_item_desc,
                         'unit_amount' => array(
                             'currency_code' => $currency,
-                            'value'       => $this->make_paypal_amount($item['line_total'],$currency),
+                            'value'       => $this->make_paypal_amount($line_item_total,$currency),
                         ),
-                        'quantity'       => 1
+                        'quantity'       => $line_item_quan
                     ),$i++
                 );
-                $line_item_total_amount = $line_item_total_amount + $this->make_paypal_amount($item['line_total']);
-			} else {
-
-                $line_item_title    = $item['name'];
-                $desc_temp          = array();
-                foreach ($item as $key => $value) 
-                {
-                    if(strstr($key, 'pa_'))
-                    {
-                        $desc_temp[] = wc_attribute_label($key).' : '.$value;
-                    }
-                }
-                $line_item_desc     = implode(', ', $desc_temp);
-                $line_item_quan     = $item['quantity'];
-                $line_item_total    = $item['line_subtotal']/$line_item_quan;
-                if( $wt_skip_line_items ){    
-
-                    $this->add_line_items(                     
-                        array(
-                            'name'      => $line_item_title.' x '.$item['quantity'],
-                            'description'      => $line_item_desc,
-                            'unit_amount' => array(
-                                'currency_code' => $currency,
-                                'value'       => $this->make_paypal_amount($line_item_total,$currency),
-                            ),
-                            'quantity'       => $line_item_quan
-                        ),$i++
-                    );
-                   
-                    $line_item_total_amount = $line_item_total_amount + $this->make_paypal_amount($item['line_subtotal'],$currency);
-
-                }else{
-                    $line_item_quan     = $item['quantity'];
-                    $line_item_total    = $item['line_subtotal']/$line_item_quan;
-                    $this->add_line_items
-                            (
-                                array
-                                (
-                                    'name'      => $line_item_title,
-                                    'description'      => $line_item_desc,
-                                    'unit_amount' => array(
-                                        'currency_code' => $currency,                                    
-                                        'value'       => $this->make_paypal_amount($line_item_total,$currency)
-                                    ),                            
-                                    'quantity'       => $line_item_quan,
-                                ),
-                                $i++
-                            );
-                    $total_amount = ($line_item_quan * $this->make_paypal_amount($line_item_total,$currency));
-                    $line_item_total_amount = $line_item_total_amount + $total_amount;
-                }
-
-            }
-
-        }
-        if ($order->get_total_discount() > 0) 
-        {
-
-            $line_item_total_amount = $line_item_total_amount - $this->make_paypal_amount($order->get_total_discount());
-        }
-
-        if (!empty($order->get_fees())) {
-
-            foreach ( $order->get_fees() as $item_id => $fee_obj ) {
-                $fee_item_data = $fee_obj->get_data(); 
+               
+            }else{
 
                 $this->add_line_items
-                (
-                    array
-                    (
-                        'NAME'  => $fee_item_data['name'],
-                        'DESC'  => '',
-                        'QTY'   => 1,
-                        'AMT'   => $this->make_paypal_amount( $fee_item_data['total']),
-                    ),
-                    $i++
-                );
-                $line_item_total_amount  = $line_item_total_amount + $this->make_paypal_amount( $fee_item_data['total']);
-                
+                        (
+                            array
+                            (
+                                'name'      => $line_item_title,
+                                'description'      => $line_item_desc,
+                                'unit_amount' => array(
+                                    'currency_code' => $currency,                                    
+                                    'value'       => $this->make_paypal_amount($line_item_total,$currency)
+                                ),                            
+                                'quantity'       => $line_item_quan,
+                            ),
+                            $i++
+                        );
             }
+            $total_amount = ($line_item_quan * $this->make_paypal_amount($line_item_total,$currency));
+            $line_item_total_amount = $line_item_total_amount + $total_amount;
+
         }
 
         //add line items amount and compares it with order total amount to check for any total mismatch
-        $order_item_total = $this->make_paypal_amount($order->get_subtotal()-$order->get_total_discount() + $total_fee,$currency);
-
-        if($line_item_total_amount != $order_item_total){
-            $diff = $this->make_paypal_amount( $order_item_total - $line_item_total_amount, $currenc);
+        $order_get_subtotal = $this->make_paypal_amount($order->get_subtotal() ,$currency);
+        if($line_item_total_amount != $order_get_subtotal){
+            $diff = $this->make_paypal_amount( $order_get_subtotal - $line_item_total_amount, $currency);
             if ( abs( $diff ) > 0.000001 && 0.0 !== (float) $diff ) {
                 //add extra line item if there is a total mismatch
                 $this->add_line_items(
@@ -608,47 +579,48 @@ class Eh_Rest_Request_Built {
         $order_tax = 0;
 
         //comment this tax because it add additional tax when review page is shown 
-        //$order_tax = $this->make_paypal_amount($order->get_total_tax(),$currency);
+        $order_tax = $this->make_paypal_amount($order->get_total_tax(),$currency);
          $order_total = $this->make_paypal_amount($order->get_total(),$currency);
+         $order_shipping_total = $this->make_paypal_amount($order->get_total_shipping(),$currency);
+         $order_discount_total = $this->make_paypal_amount($order->get_total_discount(),$currency);
 
-        $order_items_total = $order_item_total + $this->make_paypal_amount($order->get_total_shipping(),$currency) + $order_tax;
-
+        $order_items_total = $this->make_paypal_amount(($order_get_subtotal + $order_shipping_total + $order_tax + $total_fee) - $order_discount_total,$currency);
+       
         if($order_total != $order_items_total){
             if($order_items_total < $order_total){
                 $order_tax += $order_total - $order_items_total;
             }else{
-                $ship_discount_amount += $this->make_paypal_amount($order_total - $order_items_total);
+                $ship_discount_amount += $this->make_paypal_amount($order_items_total - $order_total);
             }
         }
-            $this->add_amount_breakdown(array( 
-                'currency_code' => $currency,
-                'value' => $this->make_paypal_amount($order_total,$currency),
-                'breakdown' => array(
-                    'item_total' => array(
-                        'currency_code' => $currency,
-                        //'value' => $this->make_paypal_amount($order->get_subtotal()-$order->get_total_discount() ,$currency)
-                        'value' => $this->make_paypal_amount($order_item_total ,$currency)
+        
+        $this->add_amount_breakdown(array( 
+            'currency_code' => $currency,
+            'value' => $this->make_paypal_amount($order_total,$currency),
+            'breakdown' => array(
+                'item_total' => array(
+                    'currency_code' => $currency,
+                    'value' => $this->make_paypal_amount($order_get_subtotal,$currency)
+                ),
+                'shipping' => array(
+                    'currency_code' => $currency,
+                    'value' => $this->make_paypal_amount($order_shipping_total,$currency)
+                ),
+                'tax_total' => array(
+                   'currency_code' => $currency,
+                    'value' => $this->make_paypal_amount($order_tax,$currency)
+                ),
+                'shipping_discount' => array(
+                    'currency_code' => $currency,
+                    'value' => $this->make_paypal_amount($ship_discount_amount,$currency)
+                ),                   
+                'discount' => array(
+                    'currency_code' => $currency,
+                    'value' => $this->make_paypal_amount($order_discount_total,$currency)
+                ),
 
-                    ),
-                    'shipping' => array(
-                        'currency_code' => $currency,
-                        'value' => $this->make_paypal_amount($order->get_total_shipping(),$currency)
-                    ),
-                    'tax_total' => array(
-                       'currency_code' => $currency,
-                        'value' => $this->make_paypal_amount($order_tax,$currency)
-                    ),
-                    'shipping_discount' => array(
-                        'currency_code' => $currency,
-                        'value' => $ship_discount_amount
-                    ),                   
-                    'discount' => array(
-                        'currency_code' => $currency,
-                        'value' => $this->make_paypal_amount(WC()->cart->discount_cart,$currency)
-                    ),
-
-                )
-            ));
+            )
+        ));
 
     }
 
@@ -782,7 +754,7 @@ class Eh_Rest_Request_Built {
         $flag_unset_address = false;
         if (isset($items['address'])) {
             foreach($items['address'] as $key => $val){
-                 if (empty($items['address']['country_code']) || empty($items['address']['postal_code']) || empty($items['address']['admin_area_1'])) {
+                 if (empty($items['address']['country_code']) || empty($items['address']['postal_code'])) {
                     $flag_unset_address = true;
                    break;
                 }

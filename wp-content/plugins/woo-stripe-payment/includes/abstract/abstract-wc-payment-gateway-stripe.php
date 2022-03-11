@@ -132,6 +132,11 @@ abstract class WC_Payment_Gateway_Stripe extends WC_Payment_Gateway {
 	 */
 	public $last_payment_error;
 
+	/**
+	 * @var bool @since 3.3.16
+	 */
+	public $is_voucher_payment = false;
+
 	public function __construct() {
 		$this->token_key          = $this->id . '_token_key';
 		$this->saved_method_key   = $this->id . '_saved_method_key';

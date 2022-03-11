@@ -4,9 +4,9 @@ defined( 'ABSPATH' ) || exit();
 
 /**
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Gateways
- * @author User
+ * @author  User
  *
  */
 class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
@@ -63,6 +63,7 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 				'cardOptions'        => $this->get_card_form_options(),
 				'customFieldOptions' => $this->get_card_custom_field_options(),
 				'custom_form'        => $this->is_custom_form_active(),
+				'custom_form_name'   => $this->get_option( 'custom_form' ),
 				'html'               => array( 'card_brand' => sprintf( '<img id="wc-stripe-card" src="%s" />', $this->get_custom_form()['cardBrand'] ) ),
 				'cards'              => array(
 					'visa'       => stripe_wc()->assets_url( 'img/cards/visa.svg' ),
@@ -75,6 +76,8 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 					'unknown'    => $this->get_custom_form()['cardBrand'],
 				),
 				'postal_regex'       => $this->get_postal_code_regex(),
+				'notice_location'    => $this->get_option( 'notice_location' ),
+				'notice_selector'    => $this->get_notice_css_selector()
 			)
 		);
 	}
@@ -282,6 +285,8 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 					return $this->get_order_error();
 				} elseif ( $result ) {
 					return $result;
+				} else {
+					$this->save_payment_method( $this->get_new_source_token(), $order );
 				}
 			} else {
 				$this->payment_method_token = $this->get_saved_source_id();
@@ -298,13 +303,11 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 	 * @return array
 	 */
 	private function does_order_require_action( $order, $payment_method ) {
-		$customer_id = wc_stripe_get_customer_id( $order->get_customer_id() );
 		if ( ( $intent_id = $order->get_meta( WC_Stripe_Constants::SETUP_INTENT_ID ) ) ) {
 			$intent = $this->gateway->setupIntents->update( $intent_id, array( 'payment_method' => $payment_method ) );
 		} else {
 			$params = array(
 				'confirm'        => true,
-				'customer'       => $customer_id,
 				'payment_method' => $payment_method,
 				'usage'          => 'off_session',
 				'metadata'       => array(
@@ -327,18 +330,44 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 			'requires_source_action',
 			'requires_source',
 			'requires_confirmation'
-		), true ) ) {
+		), true )
+		) {
 			return array(
 				'result'   => 'success',
 				'redirect' => $this->get_payment_intent_checkout_url( $intent, $order, 'setup_intent' ),
 			);
 		} elseif ( $intent->status === 'succeeded' ) {
-			$payment_method->payment_method_token = $intent->payment_method;
+			$this->payment_method_token = $intent->payment_method;
 			// The setup intent ID is no longer needed so remove it from the order
 			$order->delete_meta_data( WC_Stripe_Constants::SETUP_INTENT_ID );
 
 			return false;
 		}
+	}
+
+	/**
+	 * @since 3.3.32
+	 * @return mixed|void
+	 */
+	private function get_notice_css_selector() {
+		$location = $this->get_option( 'notice_location' );
+		$selector = '';
+		switch ( $location ) {
+			case 'acf':
+				$selector = 'div.payment_method_stripe_cc';
+				break;
+			case 'bcf':
+				$selector = '.wc-stripe-card-notice';
+				break;
+			case 'toc':
+				$selector = 'form.checkout';
+				break;
+			case 'custom':
+				$selector = $this->get_option( 'notice_selector', 'div.payment_method_stripe_cc' );
+				break;
+		}
+
+		return $selector;
 	}
 
 }

@@ -36,6 +36,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
         $this->express_on_cart_page = $this->get_option('express_on_cart_page') === "yes" ? true : false;
         $this->business_name = $this->get_option('business_name');
         $this->paypal_allow_override = $this->get_option('paypal_allow_override') === "yes" ? true : false;
+        $this->paypal_allow_override_smart = $this->get_option('smart_button_paypal_allow_override') === "yes" ? true : false;
         $this->paypal_locale = $this->get_option('paypal_locale') === "yes" ? true : false;
         $this->landing_page = $this->get_option('landing_page');
         // $this->customer_service = $this->get_option('customer_service');
@@ -101,9 +102,9 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
         add_action('admin_enqueue_scripts', array($this, 'admin_scripts'));
 
         if ( function_exists( 'add_image_size' ) ) {
-			add_image_size( 'eh_logo_image_size', 190, 90 );
-			add_image_size( 'eh_header_image_size', 750, 90 );
-		}
+            add_image_size( 'eh_logo_image_size', 190, 90 );
+            add_image_size( 'eh_header_image_size', 750, 90 );
+        }
     }
 
     public function init_form_fields() {
@@ -137,10 +138,8 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
         update_option('woocommerce_eh_paypal_express_settings',$eh_paypal);
     }
 
-    public function is_available() {  
+    public function is_available() {
         if ('yes' === $this->enabled) {
-
-           
             
             //for smart buttons
             if ($this->payment_mode == 'yes') {  
@@ -172,84 +171,84 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
     }
 
     public function generate_image_html( $key, $data ) {
-		$field_key = $this->get_field_key( $key );
+        $field_key = $this->get_field_key( $key );
         
-		$defaults  = array(
-			'title'             => '',
-			'disabled'          => false,
-			'class'             => '',
-			'css'               => '',
-			'placeholder'       => '',
-			'type'              => 'text',
-			'desc_tip'          => false,
-			'description'       => '',
-			'custom_attributes' => array(),
-		);
+        $defaults  = array(
+            'title'             => '',
+            'disabled'          => false,
+            'class'             => '',
+            'css'               => '',
+            'placeholder'       => '',
+            'type'              => 'text',
+            'desc_tip'          => false,
+            'description'       => '',
+            'custom_attributes' => array(),
+        );
 
-		$data  = wp_parse_args( $data, $defaults );
+        $data  = wp_parse_args( $data, $defaults );
        
-		$value = $this->get_option( $key );
+        $value = $this->get_option( $key );
         
-		$eh_maybe_hide_add_style    = '';
-		$eh_maybe_hide_remove_style = '';
+        $eh_maybe_hide_add_style    = '';
+        $eh_maybe_hide_remove_style = '';
 
-		// For backwards compatibility (customers that already have set a url)
-		$eh_value_is_url = filter_var( $value, FILTER_VALIDATE_URL ) !== false;
+        // For backwards compatibility (customers that already have set a url)
+        $eh_value_is_url = filter_var( $value, FILTER_VALIDATE_URL ) !== false;
         
-		if ( empty( $value ) || $eh_value_is_url ) {
-			$eh_maybe_hide_remove_style = 'display: none;';
-		} else {
-			$eh_maybe_hide_add_style = 'display: none;';
-		}
+        if ( empty( $value ) || $eh_value_is_url ) {
+            $eh_maybe_hide_remove_style = 'display: none;';
+        } else {
+            $eh_maybe_hide_add_style = 'display: none;';
+        }
 
-		ob_start();
-		?>
-		<tr valign="top">
-			<th scope="row" class="titledesc">
-				<label for="<?php echo esc_attr( $field_key ); ?>"><?php echo wp_kses_post( $data['title'] ); ?> <?php echo $this->get_tooltip_html( $data ); ?></label>
-			</th>
+        ob_start();
+        ?>
+        <tr valign="top">
+            <th scope="row" class="titledesc">
+                <label for="<?php echo esc_attr( $field_key ); ?>"><?php echo wp_kses_post( $data['title'] ); ?> <?php echo $this->get_tooltip_html( $data ); ?></label>
+            </th>
 
-			<td class="eh-image-component-wrapper">
-				<div class="eh-image-preview-wrapper">
-					<?php
-					if ( ! $eh_value_is_url ) {
-						echo wp_get_attachment_image( $value, 'checkout_logo' === $key ? 'eh_logo_image_size' : 'eh_header_image_size' );
-					} else {
-						echo sprintf( esc_html__( 'Already using URL as image: %s', 'express-checkout-paypal-payment-gateway-for-woocommerce' ), esc_attr( $value ) );
-					}
-					?>
-				</div>
+            <td class="eh-image-component-wrapper">
+                <div class="eh-image-preview-wrapper">
+                    <?php
+                    if ( ! $eh_value_is_url ) {
+                        echo wp_get_attachment_image( $value, 'checkout_logo' === $key ? 'eh_logo_image_size' : 'eh_header_image_size' );
+                    } else {
+                        echo sprintf( esc_html__( 'Already using URL as image: %s', 'express-checkout-paypal-payment-gateway-for-woocommerce' ), esc_attr( $value ) );
+                    }
+                    ?>
+                </div>
 
-				<button
-					class="button eh_image_upload"
-					data-field-id="<?php echo esc_attr( $field_key ); ?>"
-					data-media-frame-title="<?php echo esc_attr( __( 'Select a image to upload', 'express-checkout-paypal-payment-gateway-for-woocommerce' ) ); ?>"
-					data-media-frame-button="<?php echo esc_attr( __( 'Use this image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ) ); ?>"
-					data-add-image-text="<?php echo esc_attr( __( 'Add image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ) ); ?>"
-					style="<?php echo esc_attr( $eh_maybe_hide_add_style ); ?>"
-				>
-					<?php echo esc_html__( 'Add image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ); ?>
-				</button>
+                <button
+                    class="button eh_image_upload"
+                    data-field-id="<?php echo esc_attr( $field_key ); ?>"
+                    data-media-frame-title="<?php echo esc_attr( __( 'Select a image to upload', 'express-checkout-paypal-payment-gateway-for-woocommerce' ) ); ?>"
+                    data-media-frame-button="<?php echo esc_attr( __( 'Use this image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ) ); ?>"
+                    data-add-image-text="<?php echo esc_attr( __( 'Add image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ) ); ?>"
+                    style="<?php echo esc_attr( $eh_maybe_hide_add_style ); ?>"
+                >
+                    <?php echo esc_html__( 'Add image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ); ?>
+                </button>
 
-				<button
-					class="button eh_image_remove"
-					data-field-id="<?php echo esc_attr( $field_key ); ?>"
-					style="<?php echo esc_attr( $eh_maybe_hide_remove_style ); ?>"
-				>
-					<?php echo esc_html__( 'Remove image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ); ?>
-				</button>
+                <button
+                    class="button eh_image_remove"
+                    data-field-id="<?php echo esc_attr( $field_key ); ?>"
+                    style="<?php echo esc_attr( $eh_maybe_hide_remove_style ); ?>"
+                >
+                    <?php echo esc_html__( 'Remove image', 'express-checkout-paypal-payment-gateway-for-woocommerce' ); ?>
+                </button>
 
-				<input type="hidden"
-					name="<?php echo esc_attr( $field_key ); ?>"
-					id="<?php echo esc_attr( $field_key ); ?>"
-					value="<?php echo esc_attr( $value ); ?>"
-				/>
-			</td>
-		</tr>
-		<?php
+                <input type="hidden"
+                    name="<?php echo esc_attr( $field_key ); ?>"
+                    id="<?php echo esc_attr( $field_key ); ?>"
+                    value="<?php echo esc_attr( $value ); ?>"
+                />
+            </td>
+        </tr>
+        <?php
 
-		return ob_get_clean();
-	}
+        return ob_get_clean();
+    }
 
     public function admin_options() {
         include_once("market.php");
@@ -611,7 +610,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
 
                          WC()->cart->calculate_totals();
                         //this section moved from make req param  function of create order switch case because wc order is created only at this point
-                        if(isset( WC()->cart->smart_coupon_credit_used )){
+                        if(isset( WC()->cart->smart_coupon_credit_used ) || isset( WC()->cart->wt_smart_coupon_credit_used )){
                            
                             //comment this section and moved to order details switch case because order is not created at this point if save abandoned order is disabled 
                             foreach( $order->get_items( 'coupon' ) as $item_id => $coupon_item_obj ){
@@ -843,6 +842,43 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
                             } 
                         }
                         // $order->calculate_totals();
+                    }
+                    //Fix for WT smart button comaptibility issue 
+                    WC()->cart->calculate_totals();
+                    if(isset( WC()->cart->wt_smart_coupon_credit_used )){ 
+                       
+                        //comment this section and moved to order details switch case because order is not created at this point if save abandoned order is disabled 
+                        foreach( $order->get_items( 'coupon' ) as $item_id => $coupon_item_obj ){
+                                
+                            $coupon_item_data = $coupon_item_obj->get_data();
+                        
+                            $coupon_data_id = $coupon_item_data['id'];
+
+                            $order->remove_item($coupon_data_id);
+                        
+                        }
+                        foreach ( WC()->cart->get_coupons() as $code => $coupon ) {
+
+                            $item = new WC_Order_Item_Coupon();
+                            $item->set_props(
+                                array(
+                                    'code'         => $code,
+                                    'discount'     => WC()->cart->get_coupon_discount_amount( $code ),
+                                    'discount_tax' => WC()->cart->get_coupon_discount_tax_amount( $code ),
+                                )
+                            );
+                            // Avoid storing used_by - it's not needed and can get large.
+                            $coupon_data = $coupon->get_data();
+                            unset( $coupon_data['used_by'] );
+                            $item->add_meta_data( 'coupon_data', $coupon_data );
+
+                            // // Add item to order and save.
+                            $order->add_item( $item );
+
+                            $order->set_total( WC()->cart->get_total( 'edit' ) );
+                            $order->save();
+
+                        }
                     }
 
                     //PECPGFW-176 - create account during guest checkout condition added before finish express request
@@ -1227,7 +1263,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
 
                        WC()->cart->calculate_totals();
                         //this section moved from make req param  function of create order switch case because wc order is created only at this point
-                        if(isset( WC()->cart->smart_coupon_credit_used )){
+                        if(isset( WC()->cart->smart_coupon_credit_used ) || isset( WC()->cart->wt_smart_coupon_credit_used )){
 
                             //comment this section and moved to order details switch case because order is not created at this point if save abandoned order is disabled 
                             foreach( $order->get_items( 'coupon' ) as $item_id => $coupon_item_obj ){
@@ -1462,6 +1498,44 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
                     
                     $order->set_payment_method($this);
 
+                    //Fix for WT smart button comaptibility issue 
+                    WC()->cart->calculate_totals();
+                    if(isset( WC()->cart->wt_smart_coupon_credit_used )){ 
+                       
+                        //comment this section and moved to order details switch case because order is not created at this point if save abandoned order is disabled 
+                        foreach( $order->get_items( 'coupon' ) as $item_id => $coupon_item_obj ){
+                                
+                            $coupon_item_data = $coupon_item_obj->get_data();
+                        
+                            $coupon_data_id = $coupon_item_data['id'];
+
+                            $order->remove_item($coupon_data_id);
+                        
+                        }
+                        foreach ( WC()->cart->get_coupons() as $code => $coupon ) {
+
+                            $item = new WC_Order_Item_Coupon();
+                            $item->set_props(
+                                array(
+                                    'code'         => $code,
+                                    'discount'     => WC()->cart->get_coupon_discount_amount( $code ),
+                                    'discount_tax' => WC()->cart->get_coupon_discount_tax_amount( $code ),
+                                )
+                            );
+                            // Avoid storing used_by - it's not needed and can get large.
+                            $coupon_data = $coupon->get_data();
+                            unset( $coupon_data['used_by'] );
+                            $item->add_meta_data( 'coupon_data', $coupon_data );
+
+                            // // Add item to order and save.
+                            $order->add_item( $item );
+
+                            $order->set_total( WC()->cart->get_total( 'edit' ) );
+                            $order->save();
+
+                        }
+                    } 
+                    
                     //add below check, PECPGFW-176 payment is completed at paypal end but order is failed due to error when guest user create account using existing user email during checkout
                     //update edited address details to order from order review page
                     if($eh_paypal['smart_button_skip_review'] == 'no' || (isset(WC()->session->eh_disable_skip_review_option['disable_skip_review_option']) && (WC()->session->eh_disable_skip_review_option['disable_skip_review_option'] === 'true')) ){
@@ -1958,7 +2032,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
                     'result' => 'success',
                     'redirect' => $redirect_url,
                 );
-                if (is_ajax()) {
+                if (wp_doing_ajax()) {
                     wp_send_json($result);
                 } else {
                     wp_redirect($result['redirect']);
@@ -2027,7 +2101,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
                 );
               
             }
-            if (is_ajax()) {
+            if (wp_doing_ajax()) {
                 wp_send_json($result);
             } else {
                 wp_redirect($result['redirect']);
@@ -2170,8 +2244,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
         //response from PayPal rest API
         if ($type == 'rest') {
             $shipping_response = (isset($response['purchase_units'][0]['shipping']) ? $response['purchase_units'][0]['shipping'] : null); 
-            $eh_options = $this->get_option('woocommerce_eh_paypal_express_settings');
-            if (is_array($eh_options) && isset($eh_options['smart_button_paypal_allow_override']) && $eh_options['smart_button_paypal_allow_override'] == 'yes') {
+            if ($this->paypal_allow_override_smart == 'yes') {
                 $post_data = WC()->session->post_data;
             
             }
@@ -2179,22 +2252,25 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
             $name_first = '';
             $name_last = '';
             $name_middle = ''; 
+            $last_name = '';
             if (isset($shipping_response['name']['full_name'])) {
                 $parts = explode(' ', ($shipping_response['name']['full_name'])); 
                 $name_first = array_shift($parts);
                 $name_last = array_pop($parts);
-                $name_middle = trim(implode(' ', $parts));            
+                $name_middle = trim(implode(' ', $parts)); 
+
+                $last_name = ( isset($name_middle) ? ($name_middle.' '.(isset($name_last) ? $name_last: ' ')) : ' ' );   
             }
 
 
             $shipping_details = array();
                 $shipping_details = array
                     (
-                    'first_name' => ((is_array($eh_options) && isset($eh_options['smart_button_paypal_allow_override']) && $eh_options['smart_button_paypal_allow_override'] == 'yes') ? $post_data['billing_first_name'] : $name_first),
-                    'last_name' => ((is_array($eh_options) && isset($eh_options['smart_button_paypal_allow_override']) && $eh_options['smart_button_paypal_allow_override'] == 'yes') ? $post_data['billing_last_name'] : ( isset($name_middle) ? ($name_middle.' '.(isset($name_last) ? $name_last: ' ')) : ' ' )),
+                    'first_name' => (($this->paypal_allow_override_smart == 'yes' && isset($post_data['billing_first_name']) && !empty($post_data['billing_first_name'])) ? $post_data['billing_first_name'] : $name_first),
+                    'last_name' => (($this->paypal_allow_override_smart == 'yes' && isset($post_data['billing_last_name']) && !empty($post_data['billing_last_name'])) ? $post_data['billing_last_name']  : $last_name),
                     'company' =>  (isset(WC()->session->post_data['shipping_company']) ? WC()->session->post_data['shipping_company'] : ''),
-                    'email' =>   ((is_array($eh_options) && isset($eh_options['smart_button_paypal_allow_override']) && $eh_options['smart_button_paypal_allow_override'] == 'yes')? $post_data['billing_email'] : (isset($response['payer']['email_address']) ? $response['payer']['email_address'] : '')),
-                    // 'email' => ($eh_options['smart_button_paypal_allow_override'] == 'yes' ? $post_data['billing_email'] : (isset($response['payer']['email_address']) ? $response['payer']['email_address'] : '')),
+                    'email' => (($this->paypal_allow_override_smart == 'yes' && isset($post_data['billing_email']) && !empty($post_data['billing_email']))  ? $post_data['billing_email'] : (isset($response['payer']['email_address']) ? $response['payer']['email_address'] : '')),
+
                    // 'phone' => isset($response['SHIPTOPHONENUM']) ? $response['SHIPTOPHONENUM'] : '',
                     'address_1' => isset($shipping_response['address']['address_line_1']) ? $shipping_response['address']['address_line_1'] : '',
                     'address_2' => isset($shipping_response['address']['address_line_2']) ? $shipping_response['address']['address_line_2'] : '',
@@ -2292,27 +2368,27 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
         $safe_locales = array(
 
         'da_DK',
-		'de_DE',
-		'en_AU',
-		'en_GB',
-		'en_US',
-		'es_ES',
-		'fr_CA',
-		'fr_FR',
-		'he_IL',
-		'id_ID',
-		'it_IT',
-		'ja_JP',
-		'nl_NL',
-		'pl_PL',
-		'pt_BR',
-		'pt_PT',
-		'ru_RU',
-		'sv_SE',
-		'th_TH',
-		'tr_TR',
-		'zh_CN',
-		'zh_HK',
+        'de_DE',
+        'en_AU',
+        'en_GB',
+        'en_US',
+        'es_ES',
+        'fr_CA',
+        'fr_FR',
+        'he_IL',
+        'id_ID',
+        'it_IT',
+        'ja_JP',
+        'nl_NL',
+        'pl_PL',
+        'pt_BR',
+        'pt_PT',
+        'ru_RU',
+        'sv_SE',
+        'th_TH',
+        'tr_TR',
+        'zh_CN',
+        'zh_HK',
         'zh_TW',
 
         );
@@ -2398,7 +2474,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
         $eh_paypal = get_option('woocommerce_eh_paypal_express_settings');
 
         $p_status = $response['status'];
-        $p_id = $response['id'];
+        $p_id = (isset($response['purchase_units'][0]['payments']['captures'][0]['id']) ? $response['purchase_units'][0]['payments']['captures'][0]['id'] : $response['id']);
         $update = array
             (
             'status' => 'Sale',
@@ -2509,7 +2585,7 @@ class Eh_PayPal_Express_Payment extends WC_Payment_Gateway {
             } 
         }
 
-        do_action('wt_woocommerce_checkout_order_created', $order_id); 
+        do_action('wt_woocommerce_checkout_order_created', $order); 
         
         return $order_id;       
    }

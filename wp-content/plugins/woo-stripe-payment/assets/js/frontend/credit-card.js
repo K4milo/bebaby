@@ -8,6 +8,7 @@
     function CC() {
         wc_stripe.BaseGateway.call(this, wc_stripe_credit_card_params);
         wc_stripe.CheckoutGateway.call(this);
+        this.message_container = this.params.notice_selector;
         window.addEventListener('hashchange', this.hashchange.bind(this));
         wc_stripe.credit_card = this;
         this.confirmedSetupIntent = false;
@@ -192,7 +193,7 @@
                     }
                 }).then(function (result) {
                     if (result.error) {
-                        this.submit_error(result.error);
+                        this.submit_card_error(result.error);
                         return;
                     }
                     this.confirmedSetupIntent = result.setupIntent;
@@ -208,7 +209,7 @@
                             billing_details: this.get_billing_details()
                         }).then(function (result) {
                             if (result.error) {
-                                return this.submit_error(result.error);
+                                return this.submit_card_error(result.error);
                             }
                             this.on_token_received(result.paymentMethod);
                         }.bind(this))
@@ -245,14 +246,14 @@
                 beforeSend: this.ajax_before_send.bind(this)
             })).done(function (response) {
                 if (response.code) {
-                    this.submit_error(response.message);
+                    this.submit_card_error(response.message);
                     resolve(response);
                 } else {
                     this.client_secret = response.intent.client_secret;
                     resolve(response);
                 }
             }.bind(this)).fail(function (xhr, textStatus, errorThrown) {
-                this.submit_error(errorThrown);
+                this.submit_card_error(errorThrown);
             }.bind(this));
         }.bind(this))
     }
@@ -397,6 +398,21 @@
             } else {
                 $('.wc-stripe-save-source').hide();
             }
+        }
+    }
+
+    CC.prototype.submit_card_error = function (error) {
+        if (this.params.notice_location === 'bcf') {
+            $('.wc-stripe-card-notice').remove();
+            $('.wc-stripe_cc-new-method-container').append('<div class="wc-stripe-card-notice"></div>');
+        }
+        wc_stripe.BaseGateway.prototype.submit_error.call(this, error, true);
+    }
+
+    CC.prototype.container_styles = function () {
+        wc_stripe.CheckoutGateway.prototype.container_styles.apply(this, arguments);
+        if (this.is_custom_form()) {
+            $(this.container).find('.payment_box').addClass('custom-form__' + this.params.custom_form_name);
         }
     }
 

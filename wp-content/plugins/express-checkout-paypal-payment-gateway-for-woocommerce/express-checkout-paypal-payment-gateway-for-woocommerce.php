@@ -5,12 +5,14 @@
  * Description: Accepts payments via PayPal, Credit/Debit cards, Paypal Credit, or Local Payment Methods based on country/device using PayPal Express/Smart button checkout.
  * Author: WebToffee
  * Author URI: https://www.webtoffee.com/product/paypal-express-checkout-gateway-for-woocommerce/
- * Version: 1.6.6
+ * Version: 1.6.9
  * * WC requires at least: 3.0
- * WC tested up to: 6.0.0
+ * WC tested up to: 6.2.0
  * Text Domain: express-checkout-paypal-payment-gateway-for-woocommerce
  * License: GPLv3
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
+ * Requires at least: 5.6
+ * Requires PHP: 5.6
  */
 if (!defined('ABSPATH')) {
     exit;
@@ -22,7 +24,7 @@ if (!defined('EH_PAYPAL_MAIN_URL')) {
     define('EH_PAYPAL_MAIN_URL', plugin_dir_url(__FILE__));
 }
 if (!defined('EH_PAYPAL_VERSION')) {
-    define('EH_PAYPAL_VERSION', '1.6.6');
+    define('EH_PAYPAL_VERSION', '1.6.9');
 }
 
 require_once(ABSPATH . "wp-admin/includes/plugin.php");
@@ -338,7 +340,7 @@ function get_uninstall_reasons() {
                 'id' => 'upgraded-to-premium-smart',
                 'text' => __('Upgraded to premium.', 'express-checkout-paypal-payment-gateway-for-woocommerce'),
                 'type' => 'reviewhtml',
-                //'placeholder' => __('Have used it successfully and aint in need of it anymore', 'express-checkout-paypal-payment-gateway-for-woocommerce')
+                'placeholder' => ''
             ),
             array(
                 'id' => 'no-country-support-smart',
@@ -390,7 +392,7 @@ function get_uninstall_reasons() {
                 'id' => 'upgraded-to-premium',
                 'text' => __('Upgraded to premium.', 'express-checkout-paypal-payment-gateway-for-woocommerce'),
                 'type' => 'reviewhtml',
-                //'placeholder' => __('Have used it successfully and aint in need of it anymore', 'express-checkout-paypal-payment-gateway-for-woocommerce')
+                'placeholder' => ''
             ),
             array(
                 'id' => 'no-country-support',

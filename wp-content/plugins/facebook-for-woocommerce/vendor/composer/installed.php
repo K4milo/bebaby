@@ -1,11 +1,11 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => 'dev-release/2.6.9',
-        'version' => 'dev-release/2.6.9',
+        'pretty_version' => 'dev-release/2.6.12',
+        'version' => 'dev-release/2.6.12',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '3272df7632a28a6cf50e4dac901825ccca424e7e',
+        'reference' => 'c37386d4b64689132c81c11cdef5d5e921eacb1e',
         'name' => 'facebookincubator/facebook-for-woocommerce',
         'dev' => false,
     ),
@@ -20,12 +20,12 @@
             'dev_requirement' => false,
         ),
         'facebookincubator/facebook-for-woocommerce' => array(
-            'pretty_version' => 'dev-release/2.6.9',
-            'version' => 'dev-release/2.6.9',
+            'pretty_version' => 'dev-release/2.6.12',
+            'version' => 'dev-release/2.6.12',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '3272df7632a28a6cf50e4dac901825ccca424e7e',
+            'reference' => 'c37386d4b64689132c81c11cdef5d5e921eacb1e',
             'dev_requirement' => false,
         ),
         'roundcube/plugin-installer' => array(

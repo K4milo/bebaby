@@ -7,10 +7,10 @@
       <div class="col-lg-3 col-md-2 site-footer__widget">
         <?php dynamic_sidebar('footer-column-2'); ?>
       </div>
-      <div class="col-lg-3 col-md-2 site-footer__widget">
+      <div class="col-lg-2 col-md-2 site-footer__widget">
         <?php dynamic_sidebar('footer-column-3'); ?>
       </div>
-      <div class="col-lg-3 col-md-2 site-footer__widget">
+      <div class="col-lg-4 col-md-2 site-footer__widget">
         <?php dynamic_sidebar('footer-column-4'); ?>
       </div>
     </div>

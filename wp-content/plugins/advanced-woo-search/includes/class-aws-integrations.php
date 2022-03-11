@@ -89,6 +89,7 @@ if ( ! class_exists( 'AWS_Integrations' ) ) :
 
                 add_filter( 'et_html_main_header', array( $this, 'et_html_main_header' ) );
                 add_filter( 'et_html_slide_header', array( $this, 'et_html_main_header' ) );
+                add_action( 'wp_head', array( $this, 'divi_wp_head' ) );
                 add_filter( 'generate_navigation_search_output', array( $this, 'generate_navigation_search_output' ) );
                 add_filter( 'et_pb_search_shortcode_output', array( $this, 'divi_builder_search_module' ) );
                 add_filter( 'et_pb_menu_shortcode_output', array( $this, 'divi_builder_search_module' ) );
@@ -115,6 +116,7 @@ if ( ! class_exists( 'AWS_Integrations' ) ) :
 
                 if ( 'Woodmart' === $this->current_theme ) {
                     add_action( 'wp_head', array( $this, 'woodmart_head_action' ) );
+                    add_filter( 'aws_seamless_search_form_filter', array( $this, 'woodmart_seamless_search_form_filter' ), 10, 2 );
                 }
 
                 if ( 'Astra' === $this->current_theme ) {
@@ -221,11 +223,6 @@ if ( ! class_exists( 'AWS_Integrations' ) ) :
                 remove_action('woocommerce_after_main_content','flatsome_pages_in_search_results', 10);
             }
 
-            // Divi builder dynamic text shortcodes
-            if ( defined( 'ET_BUILDER_PLUGIN_DIR' ) ) {
-                add_filter( 'aws_before_strip_shortcodes', array( $this, 'divi_builder_strip_shortcodes' ) );
-            }
-
             // WP all import finish
             //add_action( 'pmxi_after_xml_import', array( $this, 'pmxi_after_xml_import' ) );
 
@@ -307,6 +304,7 @@ if ( ! class_exists( 'AWS_Integrations' ) ) :
 
             // Divi module
             if ( defined( 'ET_BUILDER_PLUGIN_DIR' ) || function_exists( 'et_setup_theme' ) ) {
+                include_once( AWS_DIR . '/includes/modules/divi/class-aws-divi.php' );
                 include_once( AWS_DIR . '/includes/modules/divi/class-divi-aws-module.php' );
             }
 
@@ -862,6 +860,17 @@ if ( ! class_exists( 'AWS_Integrations' ) ) :
              </style>
 
         <?php }
+
+        /*
+         * Woodmart theme: Filter default search form markup
+         */
+        public function woodmart_seamless_search_form_filter( $markup, $search_form ) {
+            if ( strpos( $search_form, 'wd-search-full-screen' ) !== false ) {
+                $pattern = '/(<form[\s\S]*?<\/form>)/i';
+                $markup = preg_replace( $pattern, $markup, $search_form );
+            }
+            return $markup;
+        }
 
         /*
          * Astra theme form markup
@@ -1583,6 +1592,36 @@ if ( ! class_exists( 'AWS_Integrations' ) ) :
         }
 
         /*
+         * Divi theme: focus search field on icon click
+         */
+        public function divi_wp_head() {
+
+            $html = '
+                <script>
+                
+                    window.addEventListener("load", function() {
+                        
+                        var awsDiviSearch = document.querySelectorAll("header .et_pb_menu__search-button");
+                        if ( awsDiviSearch ) {
+                            for (var i = 0; i < awsDiviSearch.length; i++) {
+                                awsDiviSearch[i].addEventListener("click", function() {
+                                    window.setTimeout(function(){
+                                        document.querySelector(".et_pb_menu__search-container .aws-container .aws-search-field").focus();
+                                        jQuery( ".aws-search-result" ).hide();
+                                    }, 100);
+                                }, false);
+                            }
+                        }
+
+                    }, false);
+
+                </script>';
+
+            echo $html;
+
+        }
+
+        /*
          * Generatepress theme support
          */
         public function generate_navigation_search_output( $html ) {
@@ -1813,14 +1852,6 @@ if ( ! class_exists( 'AWS_Integrations' ) ) :
          */
         public function wc_product_table_posts_per_page( $num ) {
             return 9999;
-        }
-
-        /*
-         * Divi builder remove dynamic text shortcodes
-         */
-        public function divi_builder_strip_shortcodes( $str ) {
-            $str = preg_replace( '#\[et_pb_text.[^\]]*?_dynamic_attributes.*?\]@ET-.*?\[\/et_pb_text\]#', '', $str );
-            return $str;
         }
 
         /*

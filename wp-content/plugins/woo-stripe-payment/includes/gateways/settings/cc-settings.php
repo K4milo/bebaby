@@ -1,4 +1,5 @@
 <?php
+
 return array(
 	'enabled'           => array(
 		'title'       => __( 'Enabled', 'woo-stripe-payment' ),
@@ -59,7 +60,8 @@ return array(
 		'class'       => 'wc-enhanced-select',
 		'options'     => array_merge( array( 'default' => __( 'Default', 'woo-stripe-payment' ) ), wc_get_order_statuses() ),
 		'tool_tip'    => true,
-		'description' => __( 'This is the status of the order once payment is complete. If <b>Default</b> is selected, then WooCommerce will set the order status automatically based on internal logic which states if a product is virtual and downloadable then status is set to complete. Products that require shipping are set to Processing. Default is the recommended setting as it allows standard WooCommerce code to process the order status.', 'woo-stripe-payment' ),
+		'description' => __( 'This is the status of the order once payment is complete. If <b>Default</b> is selected, then WooCommerce will set the order status automatically based on internal logic which states if a product is virtual and downloadable then status is set to complete. Products that require shipping are set to Processing. Default is the recommended setting as it allows standard WooCommerce code to process the order status.',
+			'woo-stripe-payment' ),
 	),
 	'save_card_enabled' => array(
 		'type'        => 'checkbox',
@@ -67,7 +69,8 @@ return array(
 		'default'     => 'yes',
 		'title'       => __( 'Allow Credit Card Save', 'woo-stripe-payment' ),
 		'desc_tip'    => false,
-		'description' => __( 'If enabled, a checkbox will be available on the checkout page allowing your customers to save their credit card. The payment methods are stored securely in Stripe\'s vault and never touch your server. Note: if the cart contains a subscription, there will be no checkbox because the payment method will be saved automatically.', 'woo-stripe-payment' ),
+		'description' => __( 'If enabled, a checkbox will be available on the checkout page allowing your customers to save their credit card. The payment methods are stored securely in Stripe\'s vault and never touch your server. Note: if the cart contains a subscription, there will be no checkbox because the payment method will be saved automatically.',
+			'woo-stripe-payment' ),
 	),
 	'force_3d_secure'   => array(
 		'title'       => __( 'Force 3D Secure', 'woo-stripe-payment' ),
@@ -75,7 +78,8 @@ return array(
 		'value'       => 'yes',
 		'default'     => 'no',
 		'desc_tip'    => false,
-		'description' => sprintf( __( 'Stripe internally determines when 3D secure should be presented based on their SCA engine. If <strong>Force 3D Secure</strong> is enabled, 3D Secure will be forced for ALL credit card transactions. In test mode 3D secure only shows for %1$s3DS Test Cards%2$s regardless of this setting.', 'woo-stripe-payment' ), '<a target="_blank" href="https://stripe.com/docs/testing#regulatory-cards">', '</a>' ),
+		'description' => sprintf( __( 'Stripe internally determines when 3D secure should be presented based on their SCA engine. If <strong>Force 3D Secure</strong> is enabled, 3D Secure will be forced for ALL credit card transactions. In test mode 3D secure only shows for %1$s3DS Test Cards%2$s regardless of this setting.',
+			'woo-stripe-payment' ), '<a target="_blank" href="https://stripe.com/docs/testing#regulatory-cards">', '</a>' ),
 	),
 	'generic_error'     => array(
 		'title'       => __( 'Generic Errors', 'woo-stripe-payment' ),
@@ -133,5 +137,26 @@ return array(
 		'description'       => __( 'If enabled, the CC form will show the postal code on the checkout page. If disabled, the billing field\'s postal code will be used. The postal code will show on the Add Payment Method page for security reasons.', 'woo-stripe-payment' ),
 		'desc_tip'          => true,
 		'custom_attributes' => array( 'data-show-if' => array( 'form_type' => 'custom' ) ),
+	),
+	'notice_location'   => array(
+		'title'       => __( 'Notices Location', 'woo-stripe-payment' ),
+		'type'        => 'select',
+		'default'     => 'acf',
+		'options'     => array(
+			'acf'    => __( 'Above card form', 'woo-stripe-payment' ),
+			'bcf'    => __( 'Below card form', 'woo-stripe-payment' ),
+			'toc'    => __( 'Top of checkout page', 'woo-stripe-payment' ),
+			'custom' => __( 'Custom css selector', 'woo-stripe-payment' )
+		),
+		'desc_tip'    => true,
+		'description' => __( 'This option allows you to control the location of credit card form validation errors. If you select custom, then you can provide a custom css selector for where the notices appear.', 'woo-stripe-payment' )
+	),
+	'notice_selector'   => array(
+		'title'             => __( 'Notices Selector', 'woo-stripe-payment' ),
+		'type'              => 'text',
+		'default'           => 'div.payment_method_stripe_cc',
+		'desc_tip'          => true,
+		'description'       => __( 'This is the css selector where the card validation notices will be prepended to.', 'woo-stripe-payment' ),
+		'custom_attributes' => array( 'data-show-if' => array( 'notice_location' => 'custom' ) ),
 	)
 );

@@ -251,31 +251,6 @@ class WC_Payments_Utils {
 	}
 
 	/**
-	 * Updates the order when the payment authorization has expired without being captured.
-	 * It updates the order status, adds an order note, and updates the metadata so the "Capture" action
-	 * button isn't displayed anymore.
-	 *
-	 * @param WC_Order $order Order object.
-	 */
-	public static function mark_payment_expired( $order ) {
-		$order->update_meta_data( '_intention_status', 'canceled' );
-		$order->update_status(
-			'cancelled',
-			sprintf(
-				self::esc_interpolated_html(
-				/* translators: %1: transaction ID of the payment */
-					__( 'Payment authorization has <strong>expired</strong> (<code>%1$s</code>).', 'woocommerce-payments' ),
-					[
-						'strong' => '<strong>',
-						'code'   => '<code>',
-					]
-				),
-				$order->get_transaction_id()
-			)
-		);
-	}
-
-	/**
 	 * Returns the charge_id for an "Order #" search term
 	 * or all charge_ids for a "Subscription #" search term.
 	 *
@@ -622,5 +597,26 @@ class WC_Payments_Utils {
 	public static function unlock_order_payment( $order ) {
 		$order_id = $order->get_id();
 		delete_transient( 'wcpay_processing_intent_' . $order_id );
+	}
+
+	/**
+	 * Composes url for transaction details page.
+	 *
+	 * @param  string $charge_id Charge id.
+	 * @return string            Transaction details page url.
+	 */
+	public static function compose_transaction_url( $charge_id ) {
+		if ( empty( $charge_id ) ) {
+			return '';
+		}
+
+		return add_query_arg(
+			[
+				'page' => 'wc-admin',
+				'path' => '/payments/transactions/details',
+				'id'   => $charge_id,
+			],
+			admin_url( 'admin.php' )
+		);
 	}
 }

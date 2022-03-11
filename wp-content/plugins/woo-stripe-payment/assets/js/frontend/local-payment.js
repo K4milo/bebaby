@@ -32,6 +32,9 @@
     LocalPayment.prototype.maybe_hide_gateway = function () {
         if (!this.is_active()) {
             $(this.container).hide();
+            if (this.is_gateway_selected()) {
+                $('li[class*="payment_method_stripe_"]').filter(':visible').eq(0).find('[name="payment_method"]').prop('checked', true).trigger('click');
+            }
         } else {
             $(this.container).show();
         }

@@ -1014,3 +1014,10 @@ label[for=payment_method_stripe_afterpay] > #wc-stripe-afterpay-msg {
 .wc-stripe-klarna__testmode label {
     display: inline-block;
 }
+
+div.payment_method_stripe_cc > .woocommerce-NoticeGroup {
+    margin-bottom: 10px;
+}
+div.payment_method_stripe_cc.custom-form__bootstrap > .woocommerce-NoticeGroup {
+    margin-bottom: 20px;
+}

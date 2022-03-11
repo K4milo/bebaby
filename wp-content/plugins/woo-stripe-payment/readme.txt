@@ -2,9 +2,9 @@
 Contributors: mr.clayton
 Tags: stripe, ach, klarna, credit card, apple pay, google pay, ideal, sepa, sofort
 Requires at least: 3.0.1
-Tested up to: 5.8
+Tested up to: 5.9
 Requires PHP: 5.6
-Stable tag: 3.3.15
+Stable tag: 3.3.16
 Copyright: Payment Plugins
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -60,6 +60,13 @@ If you're site is not loading over https, then Stripe won't render the Payment R
 8. Edit payment gateways on the product page
 
 == Changelog ==
+= 3.3.16 =
+* Added - Option to specify where card form validation errors are shown. Previously they were shown at the top of the checkout page. The default is now above the credit card form.
+* Added - Boleto voucher expiration days option
+* Added - Option to include Boleto voucher link in order on-hold email sent to customer.
+* Fixed - Don't remove coupon notice on checkout page if there is an error message that should be displayed.
+* Fixed - Rare error that can occur when processing a subscription with a free trial on checkout page using Credit Card.
+* Fixed - If local payment method is unsupported due to currency or billing country on checkout page, select next available payment method so place order button text updates.
 = 3.3.15 =
 * Added - France and Ireland to Klarna
 * Added -Notice in capture modal if the capture amount is less than the order total. This notice is a reminder that merchants should update

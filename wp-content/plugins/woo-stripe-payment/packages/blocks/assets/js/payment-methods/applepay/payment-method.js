@@ -76,8 +76,9 @@ const ApplePayButton = (
         canPay
     });
 
-    const handleClick = useCallback(() => {
+    const handleClick = useCallback((e) => {
         if (paymentRequest) {
+            e.preventDefault();
             onClick();
             paymentRequest.show();
         }

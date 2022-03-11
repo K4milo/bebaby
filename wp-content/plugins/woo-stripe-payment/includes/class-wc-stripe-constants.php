@@ -4,7 +4,7 @@ defined( 'ABSPATH' ) || exit();
 
 /**
  *
- * @since 3.1.0
+ * @since  3.1.0
  * @author Payment Plugins
  *
  */
@@ -74,5 +74,7 @@ class WC_Stripe_Constants {
 	const STRIPE_CURRENCY = '_stripe_currency';
 
 	const PREV_STATUS = '_stripe_prev_status';
+
+	const VOUCHER_PAYMENT = '_stripe_voucher_payment';
 
 }

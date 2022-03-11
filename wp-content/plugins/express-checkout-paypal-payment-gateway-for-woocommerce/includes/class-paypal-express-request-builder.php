@@ -140,11 +140,17 @@ class Eh_PE_Request_Built
                 $cart_product       = $item['data'];
                 $line_item_title    = $cart_product->get_title();
                 $desc_temp          = array();
-                foreach ($item['variation'] as $key => $value) 
-                {
-                    $desc_temp[]    = wc_attribute_label(str_replace('attribute_','',$key)).' : '.$value;
-                }
-                $line_item_desc     = implode(', ', $desc_temp);
+                
+                $line_item_desc     = ''; 
+                if (isset($item['variation']) && !empty($item['variation'])) {
+                    foreach ($item['variation'] as $key => $value) 
+                    {
+                        $desc_temp[]    = wc_attribute_label(str_replace('attribute_','',$key)).' : '.$value;
+                    }
+                    $line_item_desc     = implode(', ', $desc_temp);
+                } 
+
+
                 $line_item_url      = $cart_product->get_permalink();
                 
                 if( $wt_skip_line_items ){   // if tax enabled and when product has inclusive tax  
@@ -606,7 +612,15 @@ class Eh_PE_Request_Built
     }
     public function add_payment_params($items)
     {
+        // If any shipping address detail is empty, unset all shippping address fields
+        $flag_empty_shipping_details = false;
+        if ((isset($items['SHIPTONAME']) && empty($items['SHIPTONAME'])) || (isset($items['SHIPTOSTREET']) && empty($items['SHIPTOSTREET'])) || (isset($items['SHIPTOSTREET2']) && empty($items['SHIPTOSTREET2'])) || (isset($items['SHIPTOCITY']) && empty($items['SHIPTOCITY'])) || (isset($items['SHIPTOZIP']) && empty($items['SHIPTOZIP'])) ||  (isset($items['SHIPTOCOUNTRYCODE']) && empty($items['SHIPTOCOUNTRYCODE'])) ||  (isset($items['SHIPTOPHONENUM']) && empty($items['SHIPTOPHONENUM']))) {
+            $flag_empty_shipping_details = true;
+        }
         foreach ($items as $item_key => $item_value) {
+            if ($flag_empty_shipping_details && ($item_key == 'SHIPTONAME' || $item_key == 'SHIPTOSTREET' || $item_key == 'SHIPTOSTREET2' || $item_key == 'SHIPTOCITY' || $item_key == 'SHIPTOZIP' || $item_key == 'SHIPTOCOUNTRYCODE' || $item_key == 'SHIPTOPHONENUM')) {
+                    continue;
+            }
             $this->make_param("PAYMENTREQUEST_0_{$item_key}", $item_value);
         }
     }

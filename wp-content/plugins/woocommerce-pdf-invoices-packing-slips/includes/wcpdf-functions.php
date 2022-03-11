@@ -175,11 +175,12 @@ function wcpdf_deprecated_function( $function, $version, $replacement = null ) {
 	// if the deprecated function is called from one of our filters, $this should be $document
 	$filter = current_filter();
 	$global_wcpdf_filters = array( 'wp_ajax_generate_wpo_wcpdf' );
-	if ( ! in_array ($filter, $global_wcpdf_filters ) && strpos( $filter, 'wpo_wcpdf' ) !== false && strpos( $replacement, '$this' ) !== false ) {
+	if ( ! in_array ( $filter, $global_wcpdf_filters ) && strpos( $filter, 'wpo_wcpdf' ) !== false && strpos( $replacement, '$this' ) !== false ) {
 		$replacement = str_replace( '$this', '$document', $replacement );
 		$replacement = "{$replacement} - check that the \$document parameter is included in your action or filter ($filter)!";
 	}
-	if ( is_ajax() ) {
+	$is_ajax = function_exists( 'wp_doing_ajax' ) ? wp_doing_ajax() : defined( 'DOING_AJAX' ) && DOING_AJAX;
+	if ( $is_ajax ) {
 		do_action( 'deprecated_function_run', $function, $replacement, $version );
 		$log_string  = "The {$function} function is deprecated since version {$version}.";
 		$log_string .= $replacement ? " Replace with {$replacement}." : '';
@@ -198,7 +199,11 @@ function wcpdf_log_error( $message, $level = 'error', $e = null ) {
 		$logger = wc_get_logger();
 		$context = array( 'source' => 'wpo-wcpdf' );
 
-		if ( apply_filters( 'wcpdf_log_stacktrace', false ) && !empty($e) && is_callable( array( $e, 'getTraceAsString') ) ) {
+		if ( is_callable( array( $e, 'getFile' ) ) && is_callable( array( $e, 'getLine' ) ) ) {
+			$message = sprintf( '%s (%s:%d)', $message, $e->getFile(), $e->getLine() );
+		}
+
+		if ( apply_filters( 'wcpdf_log_stacktrace', false ) && is_callable( array( $e, 'getTraceAsString' ) ) ) {
 			$message .= "\n".$e->getTraceAsString();
 		}
 		 
@@ -225,7 +230,10 @@ function wcpdf_output_error( $message, $level = 'error', $e = null ) {
 	?>
 	<div style="border: 2px solid red; padding: 5px;">
 		<h3><?php echo wp_kses_post( $message ); ?></h3>
-		<?php if ( !empty($e) && is_callable( array( $e, 'getTraceAsString') ) ): ?>
+		<?php if ( is_callable( array( $e, 'getFile' ) ) && is_callable( array( $e, 'getLine' ) ) ): ?>
+		<pre><?php echo $e->getFile(); ?> (<?php echo $e->getLine(); ?>)</pre>
+		<?php endif ?>
+		<?php if ( is_callable( array( $e, 'getTraceAsString' ) ) ): ?>
 		<pre><?php echo $e->getTraceAsString(); ?></pre>
 		<?php endif ?>
 	</div>
@@ -240,4 +248,51 @@ function wcpdf_output_error( $message, $level = 'error', $e = null ) {
  */
 function wcpdf_date_format( $document = null, $date_type = null ) {
 	return apply_filters( 'wpo_wcpdf_date_format', wc_date_format(), $document, $date_type );
+}
+
+/**
+ * Catch MySQL errors
+ * 
+ * Inspired from here: https://github.com/johnbillion/query-monitor/blob/d5b622b91f18552e7105e62fa84d3102b08975a4/collectors/db_queries.php#L125-L280
+ * 
+ * With SAVEQUERIES constant defined as 'false', '$wpdb->queries' is empty and '$EZSQL_ERROR' is used instead.
+ * Using the Query Monitor plugin, the SAVEQUERIES constant is defined as 'true'
+ * More info about this constant can be found here: https://wordpress.org/support/article/debugging-in-wordpress/#savequeries
+ *
+ * @param  object $wpdb
+ * @return array  errors found
+ */
+function wcpdf_catch_db_object_errors( $wpdb ) {
+	global $EZSQL_ERROR;
+
+	$errors = array();
+
+	// using '$wpdb->queries'
+	if ( ! empty( $wpdb->queries ) && is_array( $wpdb->queries ) ) {
+		foreach ( $wpdb->queries as $query ) {
+			$result = isset( $query['result'] ) ? $query['result'] : null;
+	
+			if ( is_wp_error( $result ) && is_array( $result->errors ) ) {
+				foreach ( $result->errors as $error ) {
+					$errors[] = reset( $error );
+				}
+			}
+		}
+	} 
+	
+	// fallback to '$EZSQL_ERROR'
+	if ( empty( $errors ) && ! empty( $EZSQL_ERROR ) && is_array( $EZSQL_ERROR ) ) {
+		foreach ( $EZSQL_ERROR as $error ) {
+			$errors[] = $error['error_str'];
+		}
+	}
+
+	// log errors
+	if ( ! empty( $errors ) ) {
+		foreach ( $errors as $error_message ) {
+			wcpdf_log_error( $error_message, 'critical' );
+		}
+	}
+
+	return $errors;
 }
