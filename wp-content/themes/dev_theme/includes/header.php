@@ -39,7 +39,7 @@
         <nav class="menu-account">
           <ul class="menu-account__wrapper">
             <li class="menu-account__item">
-              <a href="/mi-cuenta/" class="menu-account__link">
+              <a href="/my-account/" class="menu-account__link">
                 <i class="fas fa-user menu-account__icon"></i>
               </a>
             </li>
