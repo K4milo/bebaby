@@ -5,8 +5,7 @@
 # "mu-plugins", "plugins", "themes" directory
 wp-content/*
 !wp-content/mu-plugins/
-wp-content/plugins/
-!wp-content/themes/
+!wp-content/themes/dev_theme/*
 
 # ignore these plugins
 wp-content/plugins/hello.php

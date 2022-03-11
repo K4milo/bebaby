@@ -17,4 +17,4 @@ jobs:
         server: ftp.luxuryflowersclt.store
         username: ${{ secrets.luxury_user }}
         password: ${{ secrets.luxury_password }}
-        server-dir: /home/u633958091/domains/luxuryflowersclt.store/public_html/
+        server-dir: /
