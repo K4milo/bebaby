@@ -24,7 +24,11 @@
   font-size: rem(46px);
 
   @include from(l) {
-    font-size: rem(76px);
+    font-size: rem(56px);
+  }
+
+  @include from(xl) {
+    font-size: rem(70px);
   }
 }
 

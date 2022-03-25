@@ -1,6 +1,8 @@
 .follow-us {
+  align-items: center;
   background-color: $coffee;
   padding: rem(16px);
+  text-align: center;
 
   &__text {
     text-align: center;
@@ -8,10 +10,18 @@
 
   &__link {
     color: $white;
+    display: inline-block;
     text-decoration: none;
+    vertical-align: middle;
 
     &:hover {
-      color: $white;
+      color: $gold;
+    }
+
+    &--small {
+      i.fab {
+        font-size: rem(20px);
+      }
     }
   }
 

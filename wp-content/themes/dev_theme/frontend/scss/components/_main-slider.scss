@@ -26,9 +26,13 @@
     @include from(l) {
       @include center('vertical');
 
-      right: rem(40px);
+      right: 0;
       padding: rem(40px) rem(60px);
-      max-width: 40%;
+      max-width: 50%;
+    }
+
+    @include from(xl) {
+      max-width: 45%;
     }
 
     h2 {
