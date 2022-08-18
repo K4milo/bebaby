@@ -6,6 +6,7 @@
    */
 
 $featured_posts = get_field('featured_products');
+global $woocommerce;
 
 if( $featured_posts ): ?>
   <div class="featured-products">
@@ -17,7 +18,7 @@ if( $featured_posts ): ?>
         <?php foreach( $featured_posts as $post ):
         $post = $post['featured_product'];
         setup_postdata($post);
-        $product = wc_get_product( $post->ID );
+        $product = new WC_Product( $post->ID );
         ?>
 
         <div class="col-lg-3 featured-products__item">

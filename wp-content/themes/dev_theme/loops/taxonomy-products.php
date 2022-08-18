@@ -20,7 +20,7 @@ if ($categories): ?>
         $cat_name = $category->name;
         $cat_slug = $category->slug;
         $cat_description = $category->description;
-        $thumbnail_id = get_woocommerce_term_meta($cat_id, 'thumbnail_id', true);
+        $thumbnail_id = get_term_meta($cat_id, 'thumbnail_id', true);
         $cat_image = wp_get_attachment_url($thumbnail_id); ?>
       <div class="col-lg-4 col-md-6 mb-3">
         <article class="card-category">
