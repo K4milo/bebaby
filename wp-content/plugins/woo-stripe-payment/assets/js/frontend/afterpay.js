@@ -33,7 +33,7 @@
             qty = 0;
         }
         if (cents) {
-            return (this.get_product_data().price * Math.pow(10, 2)) * parseInt(qty);
+            return this.get_product_data().price_cents * parseInt(qty);
         }
         return this.get_product_data().price * parseInt(qty);
     }
@@ -45,25 +45,33 @@
         }));
     }
 
+    AfterpayProduct.prototype.found_variation = function () {
+        wc_stripe.ProductGateway.prototype.found_variation.apply(this, arguments);
+        this.mount_message(true);
+    }
+
     AfterpayProduct.prototype.mount_message = function (update) {
-        if (update && this.msgElement) {
-            this.msgElement.update({
-                amount: this.get_product_price(true),
-                currency: this.get_currency(),
-                isEligible: this.is_eligible(this.get_product_price())
-            })
-        }
-        var $el = $('#wc-stripe-afterpay-product-msg');
-        if (!$el.length) {
-            if ($('.summary .price').length) {
-                $('.summary .price').append('<div id="wc-stripe-afterpay-product-msg"></div>');
-            } else {
-                if ($('.price').length) {
-                    $($('.price')[0]).append('<div id="wc-stripe-afterpay-product-msg"></div>');
+        if (this.msgElement) {
+            if (update) {
+                this.msgElement.update({
+                    amount: this.get_product_price(true),
+                    currency: this.get_currency(),
+                    isEligible: this.is_eligible(this.get_product_price())
+                })
+            }
+            var $el = $('#wc-stripe-afterpay-product-msg');
+            if (!$el.length) {
+                if ($('.summary .price').length) {
+                    $('.summary .price').append('<div id="wc-stripe-afterpay-product-msg"></div>');
+                } else {
+                    if ($('.price').length) {
+                        $($('.price')[0]).append('<div id="wc-stripe-afterpay-product-msg"></div>');
+                    }
                 }
             }
+            this.msgElement.mount('#wc-stripe-afterpay-product-msg');
         }
-        this.msgElement.mount('#wc-stripe-afterpay-product-msg');
+
     }
 
     /**
@@ -97,7 +105,7 @@
             this.msgElement.update({
                 amount: this.get_total_price_cents(),
                 currency: this.get_currency(),
-                isEligible: this.is_eligible(parseFloat(this.get_total_price()))
+                isEligible: true
             })
         }
         var $el = $('#wc-stripe-afterpay-cart-container');

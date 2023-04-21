@@ -5,6 +5,9 @@
  * @package WooCommerce\Payments\Admin
  */
 
+use WCPay\Core\Server\Request\Get_Charge;
+use WCPay\Core\Server\Request\Get_Intention;
+use WCPay\Constants\Payment_Intent_Status;
 use WCPay\Exceptions\API_Exception;
 
 defined( 'ABSPATH' ) || exit;
@@ -269,14 +272,19 @@ class WC_REST_Payments_Reader_Controller extends WC_Payments_REST_Controller {
 	public function generate_print_receipt( $request ) {
 		try {
 			/* Collect the data, available on the server side. */
-			$payment_intent = $this->api_client->get_intent( $request->get_param( 'payment_intent_id' ) );
-			if ( 'succeeded' !== $payment_intent->get_status() ) {
+			$wcpay_request  = Get_Intention::create( $request->get_param( 'payment_intent_id' ) );
+			$payment_intent = $wcpay_request->send( 'wcpay_get_intent_request' );
+			if ( Payment_Intent_Status::SUCCEEDED !== $payment_intent->get_status() ) {
 				throw new \RuntimeException( __( 'Invalid payment intent', 'woocommerce-payments' ) );
 			}
-			$charge = $this->api_client->get_charge( $payment_intent->get_charge_id() );
+
+			$charge         = $payment_intent->get_charge();
+			$charge_id      = $charge ? $charge->get_id() : null;
+			$charge_request = Get_Charge::create( $charge_id );
+			$charge_array   = $charge_request->send( 'wcpay_get_charge_request' );
 
 			/* Collect receipt data, stored on the store side. */
-			$order = wc_get_order( $charge['order']['number'] );
+			$order = wc_get_order( $charge_array['order']['number'] );
 			if ( false === $order ) {
 				throw new \RuntimeException( __( 'Order not found', 'woocommerce-payments' ) );
 			}
@@ -296,31 +304,13 @@ class WC_REST_Payments_Reader_Controller extends WC_Payments_REST_Controller {
 			];
 
 			/* Generate receipt */
-			$receipt_data = $this->receipts_service->get_receipt_markup( $settings, $order, $charge );
+			$response = [ 'html_content' => $this->receipts_service->get_receipt_markup( $settings, $order, $charge_array ) ];
 		} catch ( \Throwable $e ) {
 			$error_status_code = $e instanceof API_Exception ? $e->get_http_code() : 500;
-			return rest_ensure_response( new WP_Error( 'generate_print_receipt_error', $e->getMessage(), [ 'status' => $error_status_code ] ) );
+			$response          = new WP_Error( 'generate_print_receipt_error', $e->getMessage(), [ 'status' => $error_status_code ] );
 		}
 
-		/**
-		 * WP_REST_Server will convert the response data to JSON prior to output it.
-		 * Using this filter to prevent it, and output the data from WP_HTTP_Response instead.
-		 */
-		add_filter(
-			'rest_pre_serve_request',
-			function ( bool $served, WP_HTTP_Response $response ) : bool {
-				echo $response->get_data(); // @codingStandardsIgnoreLine
-				return true;
-			},
-			10,
-			2
-		);
-
-		return new WP_HTTP_Response(
-			$receipt_data,
-			200,
-			[ 'Content-Type' => 'text/html; charset=UTF-8' ]
-		);
+		return rest_ensure_response( $response );
 	}
 	/**
 	 * Returns HTML to preview a print receipt
@@ -330,13 +320,13 @@ class WC_REST_Payments_Reader_Controller extends WC_Payments_REST_Controller {
 	 * @throws \RuntimeException Error collecting data.
 	 */
 	public function preview_print_receipt( WP_REST_Request $request ) {
-		return rest_ensure_response(
-			$this->receipts_service->get_receipt_markup(
-				$this->create_print_preview_receipt_settings_data( $request->get_json_params() ),
-				new WC_Payments_Printed_Receipt_Sample_Order(),
-				self::PREVIEW_RECEIPT_CHARGE_DATA
-			)
+		$preview = $this->receipts_service->get_receipt_markup(
+			$this->create_print_preview_receipt_settings_data( $request->get_json_params() ),
+			new WC_Payments_Printed_Receipt_Sample_Order(),
+			self::PREVIEW_RECEIPT_CHARGE_DATA
 		);
+
+		return rest_ensure_response( [ 'html_content' => $preview ] );
 	}
 
 	/**

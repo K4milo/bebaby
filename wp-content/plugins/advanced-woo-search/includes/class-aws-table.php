@@ -30,7 +30,16 @@ if ( ! class_exists( 'AWS_Table' ) ) :
 
             $this->table_name = $wpdb->prefix . AWS_INDEX_TABLE_NAME;
 
-            add_action( 'wp_insert_post', array( $this, 'product_changed' ), 10, 2 );
+            // Create, update product
+            add_action( 'woocommerce_after_product_object_save', array( $this, 'woocommerce_after_product_object_save' ) );
+
+            // Change product status
+            add_action( 'wp_insert_post', array( $this, 'product_changed' ), 10, 3 );
+
+            // Scheduled products
+            add_action( 'wp_after_insert_post', array( $this, 'wp_after_insert_post' ), 10, 4 );
+
+            // Delete product
             add_action( 'delete_post', array( $this, 'product_deleted' ), 10, 2 );
 
             add_action( 'create_term', array( &$this, 'term_changed' ), 10, 3 );
@@ -38,24 +47,16 @@ if ( ! class_exists( 'AWS_Table' ) ) :
             add_action( 'edit_term', array( &$this, 'term_changed' ), 10, 3 );
 
             add_action( 'delete_term', array( $this, 'term_deleted' ), 10, 4 );
-           
-            if ( defined('WOOCOMMERCE_VERSION') ) {              
-                if ( version_compare( WOOCOMMERCE_VERSION, '3.0', ">=" ) ) {
-                    add_action( 'woocommerce_variable_product_sync_data', array( $this, 'variable_product_changed' ) );
-                } else {
-                    add_action( 'woocommerce_variable_product_sync', array( $this, 'variable_product_changed' ), 10, 2 );  
-                }
-            }
 
             add_action( 'woocommerce_product_set_stock_status', array( $this, 'stock_status_changes' ), 10, 3 );
-
-            add_action( 'updated_postmeta', array( $this, 'updated_custom_tabs' ), 10, 4 );
 
             add_action( 'wp_ajax_aws-reindex', array( $this, 'reindex_table_ajax' ) );
 
             add_action( 'aws_reindex_table', array( $this, 'reindex_table_job' ) );
 
             add_action( 'aws_reindex_product', array( $this, 'reindex_product_action' ) );
+
+            add_action( 'aws_force_reindex_product', array( $this, 'force_reindex_product_action' ) );
 
         }
 
@@ -505,11 +506,50 @@ if ( ! class_exists( 'AWS_Table' ) ) :
         /*
          * Update index table
          */
-        public function product_changed( $post_id, $post ) {
+        public function product_changed( $post_id, $post, $update ) {
             
             $slug = 'product';
 
+            // Not run for newly created products
+            if ( ! $update ) {
+                return;
+            }
+
             if ( $slug != $post->post_type ) {
+                return;
+            }
+
+            if ( wp_is_post_revision( $post_id ) ) {
+                return;
+            }
+
+            if ( $post->post_status === 'publish' ) {
+                return;
+            }
+
+            $this->update_table( $post_id );
+
+        }
+
+        /*
+         * Update index table for scheduled products
+         */
+        public function wp_after_insert_post( $post_id, $post, $update, $post_before ) {
+
+            if ( $update && $post->post_type === 'product' && $post_before && $post_before->post_status === 'future' ) {
+                $this->update_table( $post_id );
+            }
+
+        }
+
+        /*
+         * Update index table
+         */
+        public function woocommerce_after_product_object_save( $product ) {
+
+            $post_id = $product->get_id();
+
+            if ( 'variation' === $product->get_type() ) {
                 return;
             }
 
@@ -544,23 +584,6 @@ if ( ! class_exists( 'AWS_Table' ) ) :
         }
 
         /*
-         * Fires when products variations are changed
-         */
-        public function variable_product_changed( $product, $children = null ) {
-
-            $product_id = '';
-
-            if ( is_object( $product ) ) {
-                $product_id = $product->get_id();
-            } else {
-                $product_id = $product;
-            }
-
-            $this->update_table( $product_id );
-
-        }
-
-        /*
          * Product stock status changed
          */
         public function stock_status_changes( $product_id, $stock_status, $product ) {
@@ -579,19 +602,6 @@ if ( ! class_exists( 'AWS_Table' ) ) :
         }
 
         /*
-         * Custom Tabs was updated
-         */
-        public function updated_custom_tabs( $meta_id, $object_id, $meta_key, $meta_value ) {
-
-            if ( $meta_key === 'yikes_woo_products_tabs' && apply_filters( 'aws_filter_yikes_woo_products_tabs_sync', true ) ) {
-
-                $this->update_table( $object_id );
-
-            }
-
-        }
-
-        /*
          * Re-index single product action
          */
         public function reindex_product_action( $product_id ) {
@@ -599,19 +609,34 @@ if ( ! class_exists( 'AWS_Table' ) ) :
         }
 
         /*
+         * Re-index single product action. Always runs without looking into 'autoupdates' option
+         */
+        public function force_reindex_product_action( $product_id ) {
+            $this->update_table( $product_id, true );
+        }
+
+        /*
          * Update index table
          */
-        private function update_table( $product_id ) {
+        private function update_table( $product_id, $force = false ) {
 
             global $wpdb;
 
-            $sunc = AWS()->get_settings( 'autoupdates' );
+            $sync = AWS()->get_settings( 'autoupdates' );
+
+            /**
+             * Enable or not automatical product data sync with index table
+             * @since 2.67
+             * @param boolean $sync
+             * @param integer $product_id
+             */
+            $sync = $force ? 'true' : apply_filters( 'aws_sync_index_table', $sync, $product_id );
 
             if ( AWS_Helpers::is_table_not_exist() ) {
                 $this->create_table();
             }
 
-            if ( $sunc === 'false' ) {
+            if ( $sync === 'false' ) {
                 return;
             }
 

@@ -52,7 +52,7 @@
                 } else {
                     this.payment_token_received = true;
                     this.set_nonce(result.source.id);
-                    this.get_form().submit();
+                    this.get_form().trigger('submit');
                 }
                 resolve();
             }.bind(this);
@@ -63,7 +63,7 @@
                     } else {
                         if (this.isValidElement()) {
                             this.payment_token_received = true;
-                            this.get_form().submit();
+                            this.get_form().trigger('submit');
                         } else {
                             return this.submit_error({
                                 code: 'empty_element_' + this.params.local_payment_type,
@@ -78,7 +78,7 @@
                 }
             } else {
                 this.payment_token_received = true;
-                this.get_form().submit();
+                this.get_form().trigger('submit');
             }
         }.bind(this));
     }
@@ -87,36 +87,47 @@
         if (this.is_gateway_selected()) {
             if (!this.payment_token_received && !this.is_saved_method_selected()) {
                 e.preventDefault();
-                this.createSource();
+                if (this.is_change_payment_method()) {
+                    this.process_setup_intent();
+                } else {
+                    this.createSource();
+                }
             }
         }
+    }
+
+    LocalPayment.prototype.process_setup_intent = function () {
+        // create the setup intent
+        this.block();
+        this.create_setup_intent().then(function () {
+            this.stripe[this.setupActionMethod](this.client_secret, this.get_confirmation_args()).then(function (result) {
+                if (result.error) {
+                    return this.submit_error(result.error.message);
+                }
+                this.set_nonce(result.setupIntent.payment_method);
+                this.set_intent(result.setupIntent.id);
+                this.payment_token_received = true;
+                this.get_form().trigger('submit');
+            }.bind(this));
+        }.bind(this)).catch(function (error) {
+            this.submit_error(error);
+        }.bind(this)).finally(function () {
+            this.unblock();
+        }.bind(this))
+    }
+
+    LocalPayment.prototype.checkout_place_order = function (e) {
+        if (!this.is_saved_method_selected() && !this.payment_token_received) {
+            this.place_order.apply(this, arguments);
+            return false;
+        }
+        return wc_stripe.CheckoutGateway.prototype.checkout_place_order.apply(this, arguments);
     }
 
     LocalPayment.prototype.process_order_pay = function (e) {
         if (this.is_gateway_selected()) {
             e.preventDefault();
-            var data = this.get_form().serializeArray();
-            data.push({name: '_wpnonce', value: this.params.rest_nonce});
-            data.push({name: 'order_id', value: this.params.order_id});
-            var search = window.location.search;
-            var match = this.params.routes.order_pay.match(/\?/);
-            if (match) {
-                search = '&' + search.substr(1);
-            }
-            $.ajax({
-                url: this.params.routes.order_pay + search,
-                method: 'POST',
-                dataType: 'json',
-                data: $.param(data)
-            }).done(function (response) {
-                if (response.success) {
-                    window.location.href = response.redirect;
-                } else {
-                    this.submit_error(response.message);
-                }
-            }.bind(this)).fail(function (jqXHR, textStatus, errorThrown) {
-                this.submit_error(errorThrown);
-            }.bind(this))
+            wc_stripe.CheckoutGateway.prototype.process_order_pay.apply(this, arguments);
         }
     }
 
@@ -198,18 +209,47 @@
         }
     }
 
+    LocalPayment.prototype.handle_next_action = function (data) {
+        this.processConfirmation(data);
+    }
+
     LocalPayment.prototype.processConfirmation = function (obj) {
-        this.stripe[this.confirmation_method](obj.client_secret, this.get_confirmation_args(obj)).then(function (result) {
-            if (result.error) {
-                this.confirmation_obj = obj;
-                this.payment_token_received = false;
-                return this.submit_error(result.error.message);
-            }
-            window.location.href = decodeURI(obj.order_received_url);
-        }.bind(this))
+        if (obj.type === 'payment_intent') {
+            this.stripe[this.confirmation_method](obj.client_secret, this.get_confirmation_args(obj)).then(function (result) {
+                if (result.error) {
+                    this.after_confirmation_error(result, obj);
+                    this.confirmation_obj = obj;
+                    this.payment_token_received = false;
+                    return this.submit_error(result.error);
+                }
+                var redirect = decodeURI(obj.order_received_url);
+                if (result.paymentIntent.status === 'processing') {
+                    redirect += '&' + $.param({
+                        '_stripe_local_payment': this.gateway_id,
+                        payment_intent: result.paymentIntent.id,
+                        payment_intent_client_secret: result.paymentIntent.client_secret
+                    });
+                }
+                window.location.href = decodeURI(redirect);
+            }.bind(this))
+        } else {
+            this.stripe[this.setupActionMethod](obj.client_secret, this.get_confirmation_args(obj)).then(function (result) {
+                if (result.error) {
+                    return this.submit_error(result.error.message);
+                }
+                this.set_nonce(result.setupIntent.payment_method);
+                this.set_intent(result.setupIntent.id);
+                return this.process_payment(obj.order_id, obj.order_key);
+            }.bind(this));
+        }
+    }
+
+    LocalPayment.prototype.after_confirmation_error = function (result, obj) {
+
     }
 
     LocalPayment.prototype.get_confirmation_args = function (obj) {
+        obj = typeof obj === 'undefined' ? {} : obj;
         var args = {
             payment_method: {
                 billing_details: this.get_billing_details()
@@ -287,7 +327,10 @@
     /******* Sepa *******/
     function Sepa(params) {
         this.elementType = 'iban';
+        this.confirmation_method = 'confirmSepaDebitPayment';
+        this.setupActionMethod = 'confirmSepaDebitSetup';
         LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
     }
 
     /****** Klarna ******/
@@ -312,6 +355,7 @@
     function BECS(params) {
         this.elementType = 'auBankAccount';
         this.confirmation_method = 'confirmAuBecsDebitPayment';
+        this.setupActionMethod = 'confirmAuBecsDebitSetup';
         LocalPayment.call(this, params);
         window.addEventListener('hashchange', this.hashChange.bind(this));
     }
@@ -336,6 +380,64 @@
 
     function OXXO(params) {
         this.confirmation_method = 'confirmOxxoPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function GiroPay(params) {
+        this.confirmation_method = 'confirmGiropayPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function Bancontact(params) {
+        this.confirmation_method = 'confirmBancontactPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function EPS(params) {
+        this.elementType = 'epsBank';
+        this.confirmation_method = 'confirmEpsPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function Alipay(params) {
+        this.confirmation_method = 'confirmAlipayPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function Sofort(params) {
+        this.confirmation_method = 'confirmSofortPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function Affirm(params) {
+        this.confirmation_method = 'confirmAffirmPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function BLIK(params) {
+        this.confirmation_method = 'confirmBlikPayment';
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+        $(document.body).on('keydown', '[name^="blik_code_"]', this.handle_keydown.bind(this));
+        $(document.body).on('input', '[name^="blik_code_"]', this.handle_input.bind(this));
+    }
+
+    function Konbini(params) {
+        this.confirmation_method = 'confirmKonbiniPayment';
+        this.generateConfirmationNumber = false;
+        LocalPayment.call(this, params);
+        window.addEventListener('hashchange', this.hashChange.bind(this));
+    }
+
+    function PayNow(params) {
+        this.confirmation_method = 'confirmPayNowPayment';
         LocalPayment.call(this, params);
         window.addEventListener('hashchange', this.hashChange.bind(this));
     }
@@ -376,19 +478,6 @@
         } else {
             LocalPayment.prototype.place_order.apply(this, arguments);
         }
-    }
-
-    Sepa.prototype.getSourceArgs = function () {
-        var args = $.extend({}, LocalPayment.prototype.getSourceArgs.apply(this, arguments), {
-            mandate: {
-                notification_method: 'email',
-                interval: this.cart_contains_subscription() || this.is_change_payment_method() ? 'scheduled' : 'one_time'
-            }
-        });
-        if (args.mandate.interval === 'scheduled') {
-            delete args.amount;
-        }
-        return args;
     }
 
     Afterpay.prototype.is_currency_supported = function () {
@@ -456,12 +545,139 @@
             return this.submit_error({code: 'incomplete_boleto_tax_id'});
         } else {
             this.payment_token_received = true;
-            this.get_form().submit();
+            this.get_form().trigger('submit');
         }
     }
 
     Boleto.prototype.get_tax_id = function () {
         return $('#wc_stripe_boleto_tax_id').val();
+    }
+
+    Sepa.prototype.updated_checkout = function (e) {
+        LocalPayment.prototype.updated_checkout.apply(this, arguments);
+        var val = $('[name="billing_country"]').val();
+        if (!!val && this.element) {
+            this.element.update({placeholderCountry: val});
+        }
+    }
+
+    Sofort.prototype.get_confirmation_args = function () {
+        var args = LocalPayment.prototype.get_confirmation_args.apply(this, arguments);
+        args.payment_method.sofort = {country: args.payment_method.billing_details.address.country};
+        return args;
+    }
+
+    BLIK.prototype.get_confirmation_args = function () {
+        this.render_timer();
+        var args = LocalPayment.prototype.get_confirmation_args.apply(this, arguments);
+        args.payment_method.blik = {};
+        args.payment_method_options = {
+            blik: {
+                code: this.get_blik_code()
+            }
+        }
+        return args;
+    }
+
+    BLIK.prototype.get_blik_code = function () {
+        var result = document.querySelectorAll('[name^="blik_code_"]');
+        var code = '';
+        if (result && result.length) {
+            $.each(result, function (idx, node) {
+                code += $(node).val();
+            });
+        }
+        return code;
+    }
+
+    BLIK.prototype.handle_keydown = function (e) {
+        this.keyCode = e.keyCode;
+        var value = $(e.currentTarget).val();
+        if (this.keyCode === 8) {
+            if (!value) {
+                this.handle_input(e, true);
+            }
+        } else if (value) {
+            this.handle_input(e, true);
+        }
+    }
+
+    BLIK.prototype.handle_input = function (e, skip) {
+        var idx = $(e.currentTarget).data('blik_index');
+        idx = parseInt(idx);
+        var next = 6;
+        if (this.keyCode === 8) {
+            if (idx > 0 && skip) {
+                next = idx - 1;
+            }
+        } else if (idx < 5) {
+            next = idx + 1;
+        }
+        if (next < 6) {
+            $('#blik_code_' + next).focus();
+        }
+        this.keyCode = skip ? this.keyCode : null;
+    }
+
+    BLIK.prototype.render_timer = function (result, obj, redirect) {
+        var end = Date.now() + 60 * 1000;
+        var count = 60;
+        $('.blik-timer-container').show().find('#blik_timer').text(count + 's');
+        $('.wc-stripe-blik-code-container').hide();
+        this.timer_id = setInterval(function () {
+            if (Date.now() > end || count === 0) {
+                clearInterval(this.timer_id);
+                $('.blik-timer-container').hide();
+                $('.wc-stripe-blik-code-container').show();
+                return;
+            }
+            count += -1;
+            $('#blik_timer').text(count + 's');
+        }.bind(this), 1000);
+    }
+
+    BLIK.prototype.after_confirmation_error = function () {
+        clearInterval(this.timer_id);
+        $('.blik-timer-container').hide();
+        $('.wc-stripe-blik-code-container').show();
+    }
+
+    Konbini.prototype.get_confirmation_args = function (obj) {
+        var args = LocalPayment.prototype.get_confirmation_args.apply(this, arguments);
+        args.payment_method_options = {
+            konbini: {
+                confirmation_number: this.generateConfirmationNumber ? obj.confirmation_number : obj.billing_phone
+            }
+        }
+        return args;
+    }
+
+    Konbini.prototype.after_confirmation_error = function (result) {
+        if (result.error && result.error.hasOwnProperty('code')) {
+            if (result.error.code === 'payment_intent_konbini_rejected_confirmation_number') {
+                this.generateConfirmationNumber = true;
+            }
+        }
+    }
+
+    PayNow.prototype.processConfirmation = function (obj) {
+        if (obj.type === 'payment_intent') {
+            this.stripe[this.confirmation_method](obj.client_secret, this.get_confirmation_args(obj)).then(function (result) {
+                if (result.error) {
+                    $('form.checkout').removeClass('processing');
+                    return this.submit_error(result.error);
+                }
+                if (result.paymentIntent.status === 'requires_action') {
+                    return this.unblock();
+                } else if (result.paymentIntent.status === 'requires_payment_method') {
+                    this.unblock();
+                    return this.submit_error({code: result.paymentIntent.last_payment_error.code});
+                }
+                window.location.href = decodeURI(obj.order_received_url);
+            }.bind(this))
+        } else {
+            LocalPayment.prototype.processConfirmation.apply(this, arguments);
+        }
     }
 
     IDEAL.prototype = $.extend({}, LocalPayment.prototype, IDEAL.prototype);
@@ -486,6 +702,24 @@
 
     OXXO.prototype = $.extend({}, LocalPayment.prototype, OXXO.prototype);
 
+    GiroPay.prototype = $.extend({}, LocalPayment.prototype, GiroPay.prototype);
+
+    Bancontact.prototype = $.extend({}, LocalPayment.prototype, Bancontact.prototype);
+
+    EPS.prototype = $.extend({}, LocalPayment.prototype, EPS.prototype);
+
+    Alipay.prototype = $.extend({}, LocalPayment.prototype, Alipay.prototype);
+
+    Sofort.prototype = $.extend({}, LocalPayment.prototype, Sofort.prototype);
+
+    Affirm.prototype = $.extend({}, LocalPayment.prototype, Affirm.prototype);
+
+    BLIK.prototype = $.extend({}, LocalPayment.prototype, BLIK.prototype);
+
+    Konbini.prototype = $.extend({}, LocalPayment.prototype, Konbini.prototype);
+
+    PayNow.prototype = $.extend({}, LocalPayment.prototype, PayNow.prototype);
+
     /**
      * Local payment types that require JS integration
      * @type {Object}
@@ -501,7 +735,16 @@
         'grabpay': GrabPay,
         'afterpay_clearpay': Afterpay,
         'boleto': Boleto,
-        'oxxo': OXXO
+        'oxxo': OXXO,
+        'giropay': GiroPay,
+        'bancontact': Bancontact,
+        'eps': EPS,
+        'alipay': Alipay,
+        'sofort': Sofort,
+        'affirm': Affirm,
+        'blik': BLIK,
+        'konbini': Konbini,
+        'paynow': PayNow
     }
 
     for (var i in wc_stripe_local_payment_params.gateways) {

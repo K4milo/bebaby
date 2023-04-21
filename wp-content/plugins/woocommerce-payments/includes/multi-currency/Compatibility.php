@@ -14,11 +14,13 @@ use WC_Order_Refund;
 use WCPay\MultiCurrency\Compatibility\BaseCompatibility;
 use WCPay\MultiCurrency\Compatibility\WooCommerceBookings;
 use WCPay\MultiCurrency\Compatibility\WooCommerceFedEx;
+use WCPay\MultiCurrency\Compatibility\WooCommerceNameYourPrice;
 use WCPay\MultiCurrency\Compatibility\WooCommercePreOrders;
 use WCPay\MultiCurrency\Compatibility\WooCommerceProductAddOns;
 use WCPay\MultiCurrency\Compatibility\WooCommerceSubscriptions;
 use WCPay\MultiCurrency\Compatibility\WooCommerceUPS;
 use WCPay\MultiCurrency\Compatibility\WooCommerceDeposits;
+use WCPay\MultiCurrency\Compatibility\WooCommercePointsAndRewards;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -56,11 +58,13 @@ class Compatibility extends BaseCompatibility {
 		if ( 1 < count( $this->multi_currency->get_enabled_currencies() ) ) {
 			$this->compatibility_classes[] = new WooCommerceBookings( $this->multi_currency, $this->utils, $this->multi_currency->get_frontend_currencies() );
 			$this->compatibility_classes[] = new WooCommerceFedEx( $this->multi_currency, $this->utils );
+			$this->compatibility_classes[] = new WooCommerceNameYourPrice( $this->multi_currency, $this->utils );
 			$this->compatibility_classes[] = new WooCommercePreOrders( $this->multi_currency, $this->utils );
 			$this->compatibility_classes[] = new WooCommerceProductAddOns( $this->multi_currency, $this->utils );
 			$this->compatibility_classes[] = new WooCommerceSubscriptions( $this->multi_currency, $this->utils );
 			$this->compatibility_classes[] = new WooCommerceUPS( $this->multi_currency, $this->utils );
 			$this->compatibility_classes[] = new WooCommerceDeposits( $this->multi_currency, $this->utils );
+			$this->compatibility_classes[] = new WooCommercePointsAndRewards( $this->multi_currency, $this->utils );
 		}
 	}
 
@@ -153,16 +157,16 @@ class Compatibility extends BaseCompatibility {
 	 *
 	 * @param WC_Order[]|WC_Order_Refund[] $results The results returned by the orders query.
 	 *
-	 * @return array
+	 * @return array|object of WC_Order objects
 	 */
-	public function convert_order_prices( $results ): array {
+	public function convert_order_prices( $results ) {
 		$backtrace_calls = [
 			'Automattic\WooCommerce\Admin\Notes\NewSalesRecord::sum_sales_for_date',
 			'Automattic\WooCommerce\Admin\Notes\NewSalesRecord::possibly_add_note',
 		];
 
-		// If the call we're expecting isn't in the backtrace, then just do nothing and return the results.
-		if ( ! $this->utils->is_call_in_backtrace( $backtrace_calls ) ) {
+		// If the results are not an array, or if the call we're expecting isn't in the backtrace, then just do nothing and return the results.
+		if ( ! is_array( $results ) || ! $this->utils->is_call_in_backtrace( $backtrace_calls ) ) {
 			return $results;
 		}
 

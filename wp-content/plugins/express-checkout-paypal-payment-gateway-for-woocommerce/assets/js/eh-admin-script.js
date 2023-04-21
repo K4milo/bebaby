@@ -1,96 +1,100 @@
-jQuery(function($) {
-   
-	var eh_uploadField = {
-		frames: [],
-		init: function() {
-           
-			$( 'button.eh_image_upload' )
+jQuery(
+	function($) {
+
+		var eh_uploadField = {
+			frames: [],
+			init: function() {
+
+				$( 'button.eh_image_upload' )
 				.on( 'click', this.onClickUploadButton );
 
-			$( 'button.eh_image_remove' )
+				$( 'button.eh_image_remove' )
 				.on( 'click', this.removeProductImage );
-		},
+			},
 
-		onClickUploadButton: function( event ) {
-           
-			event.preventDefault();
+			onClickUploadButton: function( event ) {
 
-			var data = $( event.target ).data();
+				event.preventDefault();
 
-			// If the media frame already exists, reopen it.
-			if ( 'undefined' !== typeof eh_uploadField.frames[ data.fieldId ] ) {
-				// Open frame.
-				eh_uploadField.frames[ data.fieldId ].open();
-				return false;
-			}
+				var data = $( event.target ).data();
 
-			// Create the media frame.
-			eh_uploadField.frames[ data.fieldId ] = wp.media( {
-				title: data.mediaFrameTitle,
-				button: {
-					text: data.mediaFrameButton
-				},
-				multiple: false // Set to true to allow multiple files to be selected
-			} );
+				// If the media frame already exists, reopen it.
+				if ( 'undefined' !== typeof eh_uploadField.frames[ data.fieldId ] ) {
+					// Open frame.
+					eh_uploadField.frames[ data.fieldId ].open();
+					return false;
+				}
 
-			// When an image is selected, run a callback.
-			var context = {
-				fieldId: data.fieldId,
-			};
+				// Create the media frame.
+				eh_uploadField.frames[ data.fieldId ] = wp.media(
+					{
+						title: data.mediaFrameTitle,
+						button: {
+							text: data.mediaFrameButton
+						},
+						multiple: false // Set to true to allow multiple files to be selected
+					}
+				);
 
-			eh_uploadField.frames[ data.fieldId ]
+				// When an image is selected, run a callback.
+				var context = {
+					fieldId: data.fieldId,
+				};
+
+				eh_uploadField.frames[ data.fieldId ]
 				.on( 'select', eh_uploadField.onSelectAttachment, context );
 
-			// Finally, open the modal.
-			eh_uploadField.frames[ data.fieldId ].open();
-		},
+				// Finally, open the modal.
+				eh_uploadField.frames[ data.fieldId ].open();
+			},
 
-		onSelectAttachment: function() {
-			// We set multiple to false so only get one image from the uploader.
-			var attachment = eh_uploadField.frames[ this.fieldId ]
+			onSelectAttachment: function() {
+				// We set multiple to false so only get one image from the uploader.
+				var attachment = eh_uploadField.frames[ this.fieldId ]
 				.state()
 				.get( 'selection' )
 				.first()
 				.toJSON();
 
-			var $field = $( '#' + this.fieldId );
-			var $img = $( '<img />' )
+				var $field = $( '#' + this.fieldId );
+				var $img   = $( '<img />' )
 				.attr( 'src', getAttachmentUrl( attachment ) );
 
-			$field.siblings( '.eh-image-preview-wrapper' )
+				$field.siblings( '.eh-image-preview-wrapper' )
 				.html( $img );
 
-			$field.val( attachment.id );
-			$field.siblings( 'button.eh_image_remove' ).show();
-			$field.siblings( 'button.eh_image_upload' ).hide();
-		},
+				$field.val( attachment.id );
+				$field.siblings( 'button.eh_image_remove' ).show();
+				$field.siblings( 'button.eh_image_upload' ).hide();
+			},
 
-		removeProductImage: function( event ) {
-			event.preventDefault();
-			var $button = $( event.target );
-			var data = $button.data();
-			var $field = $( '#' + data.fieldId );
+			removeProductImage: function( event ) {
+				event.preventDefault();
+				var $button = $( event.target );
+				var data    = $button.data();
+				var $field  = $( '#' + data.fieldId );
 
-			//update fields
-			$field.val( '' );
-			$field.siblings( '.eh-image-preview-wrapper' ).html( ' ' );
-			$button.hide();
-			$field.siblings( 'button.eh_image_upload' ).show();
-		},
-		
-	};
-    function getAttachmentUrl( attachment ) {
-		if ( attachment.sizes && attachment.sizes.medium ) {
-			return attachment.sizes.medium.url;
+				//update fields
+				$field.val( '' );
+				$field.siblings( '.eh-image-preview-wrapper' ).html( ' ' );
+				$button.hide();
+				$field.siblings( 'button.eh_image_upload' ).show();
+			},
+
+		};
+		function getAttachmentUrl( attachment ) {
+			if ( attachment.sizes && attachment.sizes.medium ) {
+				return attachment.sizes.medium.url;
+			}
+			if ( attachment.sizes && attachment.sizes.thumbnail ) {
+				return attachment.sizes.thumbnail.url;
+			}
+			return attachment.url;
 		}
-		if ( attachment.sizes && attachment.sizes.thumbnail ) {
-			return attachment.sizes.thumbnail.url;
+		function run() {
+			eh_uploadField.init();
 		}
-		return attachment.url;
-	}
-    function run() {
-		eh_uploadField.init();
-	}
 
-	$( run );
-});
+		$( run );
+	}
+);

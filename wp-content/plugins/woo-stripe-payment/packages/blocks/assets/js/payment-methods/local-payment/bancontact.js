@@ -1,6 +1,6 @@
 import {registerPaymentMethod} from '@woocommerce/blocks-registry';
 import {getSettings} from "../util";
-import {LocalPaymentSourceContent} from './local-payment-method';
+import {LocalPaymentIntentContent} from './local-payment-method';
 import {PaymentMethodLabel, PaymentMethod} from "../../components/checkout";
 import {canMakePayment} from "./local-payment-method";
 
@@ -17,10 +17,11 @@ if (getData()) {
         placeOrderButtonLabel: getData('placeOrderButtonLabel'),
         canMakePayment: canMakePayment(getData),
         content: <PaymentMethod
-            content={LocalPaymentSourceContent}
+            content={LocalPaymentIntentContent}
+            confirmationMethod={'confirmBancontactPayment'}
             getData={getData}/>,
         edit: <PaymentMethod
-            content={LocalPaymentSourceContent}
+            content={LocalPaymentIntentContent}
             getData={getData}/>,
         supports: {
             showSavedCards: false,

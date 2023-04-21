@@ -1,10 +1,10 @@
-import ErrorHandler from '../ErrorHandler';
 import CartActionHandler from '../ActionHandler/CartActionHandler';
 
 class MiniCartBootstap {
-    constructor(gateway, renderer) {
+    constructor(gateway, renderer, errorHandler) {
         this.gateway = gateway;
         this.renderer = renderer;
+        this.errorHandler = errorHandler;
         this.actionHandler = null;
     }
 
@@ -12,7 +12,7 @@ class MiniCartBootstap {
 
         this.actionHandler = new CartActionHandler(
             PayPalCommerceGateway,
-            new ErrorHandler(this.gateway.labels.error.generic),
+            this.errorHandler,
         );
         this.render();
 
@@ -22,9 +22,8 @@ class MiniCartBootstap {
     }
 
     shouldRender() {
-        return document.querySelector(this.gateway.button.mini_cart_wrapper) !==
-            null || document.querySelector(this.gateway.hosted_fields.mini_cart_wrapper) !==
-        null;
+        return document.querySelector(this.gateway.button.mini_cart_wrapper) !== null
+            || document.querySelector(this.gateway.hosted_fields.mini_cart_wrapper) !== null;
     }
 
     render() {
@@ -33,9 +32,13 @@ class MiniCartBootstap {
         }
 
         this.renderer.render(
-            this.gateway.button.mini_cart_wrapper,
-            this.gateway.hosted_fields.mini_cart_wrapper,
-            this.actionHandler.configuration()
+            this.actionHandler.configuration(),
+            {
+                button: {
+                    wrapper: this.gateway.button.mini_cart_wrapper,
+                    style: this.gateway.button.mini_cart_style,
+                },
+            }
         );
     }
 }

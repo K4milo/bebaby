@@ -13,6 +13,8 @@ namespace LiteSpeed;
 defined( 'WPINC' ) || exit;
 
 class Admin_Display extends Base {
+	const LOG_TAG = '👮‍♀️';
+
 	const NOTICE_BLUE = 'notice notice-info';
 	const NOTICE_GREEN = 'notice notice-success';
 	const NOTICE_RED = 'notice notice-error';
@@ -86,6 +88,8 @@ class Admin_Display extends Base {
 		else {
 			add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		}
+
+		$this->cls( 'Metabox' )->register_settings();
 	}
 
 	/**
@@ -113,6 +117,8 @@ class Admin_Display extends Base {
 
 			// sub menus
 			$this->_add_submenu( __( 'Dashboard', 'litespeed-cache' ), 'litespeed', 'show_menu_dash' );
+
+			$this->_add_submenu( __( 'Presets', 'litespeed-cache' ), 'litespeed-presets', 'show_menu_presets' );
 
 			$this->_add_submenu( __( 'General', 'litespeed-cache' ), 'litespeed-general', 'show_menu_general' );
 
@@ -313,7 +319,11 @@ class Admin_Display extends Base {
 		else {
 			$cls .= ' is-dismissible';
 		}
-		return '<div class="' . $cls . '"><p>'. $str . '</p></div>';
+
+		// possible translation
+		$str = Lang::maybe_translate( $str );
+
+		return '<div class="litespeed_icon ' . $cls . '"><p>'. $str . '</p></div>';
 	}
 
 	/**
@@ -342,8 +352,12 @@ class Admin_Display extends Base {
 	 * @since 1.6
 	 * @access public
 	 */
-	public static function succeed( $msg, $echo = false, $irremovable = false ) {
+	public static function success( $msg, $echo = false, $irremovable = false ) {
 		self::add_notice( self::NOTICE_GREEN, $msg, $echo, $irremovable );
+	}
+	/** @deprecated 4.7 */
+	public static function succeed( $msg, $echo = false, $irremovable = false ) {
+		self::success( $msg, $echo, $irremovable );
 	}
 
 	/**
@@ -354,6 +368,35 @@ class Admin_Display extends Base {
 	 */
 	public static function error( $msg, $echo = false, $irremovable = false ) {
 		self::add_notice( self::NOTICE_RED, $msg, $echo, $irremovable );
+	}
+
+	/**
+	 * Add irremovable msg
+	 * @since 4.7
+	 */
+	public static function add_unique_notice( $color_mode, $msgs, $irremovable = false ) {
+		if ( ! is_array( $msgs ) ) $msgs = array( $msgs );
+
+		$color_map = array(
+			'info' => self::NOTICE_BLUE,
+			'note' => self::NOTICE_YELLOW,
+			'success' => self::NOTICE_GREEN,
+			'error' => self::NOTICE_RED,
+		);
+		if ( empty( $color_map[ $color_mode ] ) ) {
+			self::debug( 'Wrong admin display color mode!' );
+			return;
+		}
+		$color = $color_map[ $color_mode ];
+
+		// Go through to make sure unique
+		$filtered_msgs = array();
+		foreach ( $msgs as $k => $str ) {
+			if( is_numeric( $k ) ) $k = md5( $str ); // Use key to make it overwriteable to previous same msg
+			$filtered_msgs[ $k ] = $str;
+		}
+
+		self::add_notice( $color, $filtered_msgs, false, $irremovable );
 	}
 
 	/**
@@ -390,7 +433,7 @@ class Admin_Display extends Base {
 
 		$msg_name = $irremovable ? self::DB_MSG_PIN : self::DB_MSG;
 
-		$messages = self::get_option( $msg_name );
+		$messages = self::get_option( $msg_name, array() );
 		if ( ! is_array( $messages ) ) {
 			$messages = array();
 		}
@@ -462,9 +505,9 @@ class Admin_Display extends Base {
 				echo $msg;
 			}
 		}
-		if ( $messages != -1 ) {
-			self::update_option( self::DB_MSG_PIN, -1 );
-		}
+		// if ( $messages != -1 ) {
+		// 	self::update_option( self::DB_MSG_PIN, -1 );
+		// }
 
 		if( empty( $_GET[ 'page' ] ) || strpos( $_GET[ 'page' ], 'litespeed' ) !== 0 ) {
 			global $pagenow;
@@ -506,7 +549,7 @@ class Admin_Display extends Base {
 			return;
 		}
 
-		$messages = self::get_option( self::DB_MSG_PIN );
+		$messages = self::get_option( self::DB_MSG_PIN, array() );
 		if ( ! is_array( $messages ) || empty( $messages[ $_GET[ 'msgid' ] ] ) ) {
 			return;
 		}
@@ -543,6 +586,16 @@ class Admin_Display extends Base {
 	/**
 	 * Displays the General page.
 	 *
+	 * @since 5.3
+	 * @access public
+	 */
+	public function show_menu_presets() {
+		require_once LSCWP_DIR . 'tpl/presets/entry.tpl.php';
+	}
+
+	/**
+	 * Displays the General page.
+	 *
 	 * @since 3.0
 	 * @access public
 	 */
@@ -558,6 +611,16 @@ class Admin_Display extends Base {
 	 */
 	public function show_menu_cdn() {
 		require_once LSCWP_DIR . 'tpl/cdn/entry.tpl.php';
+	}
+
+	/**
+	 * Displays the CDN page.
+	 *
+	 * @since 3.0
+	 * @access public
+	 */
+	public function show_menu_auto_cdn_setup() {
+		require_once LSCWP_DIR . 'tpl/auto_cdn_setup/entry.tpl.php';
 	}
 
 	/**
@@ -838,7 +901,7 @@ class Admin_Display extends Base {
 			$title_off = __( 'OFF', 'litespeed-cache' );
 		}
 		$cls = $checked ? 'primary' : 'default litespeed-toggleoff';
-		echo "<div class='litespeed-toggle litespeed-toggle-btn litespeed-toggle-btn-$cls' data-litespeed-toggle-on='primary' data-litespeed-toggle-off='default' data-litespeed_crawler_id='$id' >
+		echo "<div class='litespeed-toggle litespeed-toggle-btn litespeed-toggle-btn-$cls' data-litespeed-toggle-on='primary' data-litespeed-toggle-off='default' data-litespeed_toggle_id='$id' >
 				<input name='$id' type='hidden' value='$checked' />
 				<div class='litespeed-toggle-group'>
 					<label class='litespeed-toggle-btn litespeed-toggle-btn-primary litespeed-toggle-on'>$title_on</label>

@@ -1,3 +1,8 @@
+php_value upload_max_filesize 1280M
+php_value post_max_size 1280M
+php_value memory_limit 2560M
+php_value max_execution_time 3000
+php_value max_input_time 3000
 # BEGIN LSCACHE
 ## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
 <IfModule LiteSpeed>

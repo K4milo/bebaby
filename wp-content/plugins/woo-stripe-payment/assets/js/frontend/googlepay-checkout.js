@@ -29,13 +29,14 @@
         this.isReadyToPay().then(function () {
             $(this.container).show();
             if (this.banner_enabled()) {
-                var $button = $(this.paymentsClient.createButton({
-                    onClick: this.banner_checkout.bind(this),
-                    buttonColor: this.params.button_color,
-                    buttonType: this.params.button_style
-                }));
-                $(this.banner_container).show().parent().parent().addClass('active');
+                var $button = $(this.paymentsClient.createButton($.extend({}, this.get_button_options(), {
+                    onClick: this.banner_checkout.bind(this)
+                })));
+                $(this.banner_container).show().addClass('active').closest('.wc-stripe-banner-checkout').addClass('active');
                 $(this.banner_container).empty().append($button);
+                if (this.is_rectangle_button()) {
+                    $button.find('button').removeClass('new_style');
+                }
             }
         }.bind(this))
     }
@@ -74,7 +75,7 @@
         }
         this.fields.toFormFields({update_shipping_method: false});
         if (this.checkout_fields_valid()) {
-            this.get_form().submit();
+            this.get_form().trigger('submit');
         }
     }
 

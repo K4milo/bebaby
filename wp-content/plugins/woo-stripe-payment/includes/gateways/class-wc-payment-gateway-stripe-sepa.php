@@ -1,4 +1,5 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
@@ -8,12 +9,16 @@ if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
 /**
  *
  * @package Stripe/Gateways
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  *
  */
 class WC_Payment_Gateway_Stripe_Sepa extends WC_Payment_Gateway_Stripe_Local_Payment {
 
-	use WC_Stripe_Local_Payment_Charge_Trait;
+	use WC_Stripe_Local_Payment_Intent_Trait;
+
+	protected $payment_method_type = 'sepa_debit';
+
+	public $token_type = 'Stripe_Sepa';
 
 	public function __construct() {
 		$this->synchronous        = false;
@@ -26,7 +31,6 @@ class WC_Payment_Gateway_Stripe_Sepa extends WC_Payment_Gateway_Stripe_Local_Pay
 		$this->method_description = __( 'SEPA gateway that integrates with your Stripe account.', 'woo-stripe-payment' );
 		$this->icon               = stripe_wc()->assets_url( 'img/sepa.svg' );
 		parent::__construct();
-		$this->token_type = 'Stripe_Sepa';
 
 		$this->local_payment_description = sprintf(
 			__(
@@ -51,6 +55,7 @@ class WC_Payment_Gateway_Stripe_Sepa extends WC_Payment_Gateway_Stripe_Local_Pay
 		$this->supports[] = 'subscription_payment_method_change_admin';
 		$this->supports[] = 'subscription_amount_changes';
 		$this->supports[] = 'subscription_payment_method_change_customer';
+		$this->supports[] = 'pre-orders';
 	}
 
 	public function init_form_fields() {
@@ -64,12 +69,21 @@ class WC_Payment_Gateway_Stripe_Sepa extends WC_Payment_Gateway_Stripe_Local_Pay
 
 	public function get_local_payment_settings() {
 		return parent::get_local_payment_settings() + array(
-				'company_name' => array(
+				'company_name'  => array(
 					'title'       => __( 'Company Name', 'woo-stripe-payment' ),
 					'type'        => 'text',
 					'default'     => get_bloginfo( 'name' ),
 					'desc_tip'    => true,
 					'description' => __( 'The name of your company that will appear in the SEPA mandate.', 'woo-stripe-payment' ),
+				),
+				'method_format' => array(
+					'title'       => __( 'Payment Method Display', 'woo-stripe-payment' ),
+					'type'        => 'select',
+					'class'       => 'wc-enhanced-select',
+					'options'     => wp_list_pluck( $this->get_payment_method_formats(), 'example' ),
+					'default'     => 'type_ending_last4',
+					'desc_tip'    => true,
+					'description' => __( 'This option allows you to customize how the payment method will display for your customers on orders, subscriptions, etc.' ),
 				),
 			);
 	}
@@ -85,6 +99,23 @@ class WC_Payment_Gateway_Stripe_Sepa extends WC_Payment_Gateway_Stripe_Local_Pay
 
 	public function get_saved_methods_label() {
 		return __( 'Saved Accounts', 'woo-stripe-payment' );
+	}
+
+	public function get_payment_token( $method_id, $method_details = array() ) {
+		$token = parent::get_payment_token( $method_id, $method_details );
+
+		$mandate = $token->get_mandate();
+		$url     = $token->get_mandate_url();
+		if ( $mandate && ! $url ) {
+			$mandate = $this->gateway->mode( $token->get_environment() )->mandates->retrieve( $mandate );
+			if ( ! is_wp_error( $mandate ) ) {
+				if ( isset( $mandate->payment_method_details->sepa_debit->url ) ) {
+					$token->set_mandate_url( $mandate->payment_method_details->sepa_debit->url );
+				}
+			}
+		}
+
+		return $token;
 	}
 
 }

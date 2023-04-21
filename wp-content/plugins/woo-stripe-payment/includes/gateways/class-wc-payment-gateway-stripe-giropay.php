@@ -1,4 +1,5 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
@@ -8,12 +9,14 @@ if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
 /**
  *
  * @package Stripe/Gateways
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  *
  */
 class WC_Payment_Gateway_Stripe_Giropay extends WC_Payment_Gateway_Stripe_Local_Payment {
 
-	use WC_Stripe_Local_Payment_Charge_Trait;
+	use WC_Stripe_Local_Payment_Intent_Trait;
+
+	protected $payment_method_type = 'giropay';
 
 	public function __construct() {
 		$this->local_payment_type = 'giropay';
@@ -28,4 +31,5 @@ class WC_Payment_Gateway_Stripe_Giropay extends WC_Payment_Gateway_Stripe_Local_
 		$this->icon               = stripe_wc()->assets_url( 'img/giropay.svg' );
 		parent::__construct();
 	}
+
 }

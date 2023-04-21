@@ -1,8 +1,6 @@
 # Cart API <!-- omit in toc -->
 
-The cart API returns the current state of the cart for the current session or logged in user.
-
-All POST endpoints require [Nonce Tokens](nonce-tokens.md) and return the updated state of the full cart once complete.
+## Table of Contents <!-- omit in toc -->
 
 -   [Responses](#responses)
     -   [Cart Response](#cart-response)
@@ -15,6 +13,10 @@ All POST endpoints require [Nonce Tokens](nonce-tokens.md) and return the update
 -   [Remove Coupon](#remove-coupon)
 -   [Update Customer](#update-customer)
 -   [Select Shipping Rate](#select-shipping-rate)
+
+The cart API returns the current state of the cart for the current session or logged in user.
+
+All POST endpoints require [Nonce Tokens](nonce-tokens.md) and return the updated state of the full cart once complete.
 
 ## Responses
 
@@ -260,6 +262,7 @@ All endpoints under `/cart` (listed in this doc) return responses in the same fo
 		"tax_lines": []
 	},
 	"errors": [],
+	"payment_methods": [ "cod", "bacs", "cheque" ],
 	"payment_requirements": [ "products" ],
 	"extensions": {}
 }
@@ -325,10 +328,51 @@ POST /cart/add-item
 | `variation` | array   |   Yes    | Chosen attributes (for variations) containing an array of objects with keys `attribute` and `value`. |
 
 ```sh
-curl --header "X-WC-Store-API-Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/add-item?id=100&quantity=1
+curl --header "Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/add-item?id=100&quantity=1
 ```
 
 Returns the full [Cart Response](#cart-response) on success, or an [Error Response](#error-response) on failure.
+
+If you want to add supplemental cart item data before it is passed into `CartController::add_to_cart` use the [`woocommerce_store_api_add_to_cart_data`](https://github.com/woocommerce/woocommerce-blocks/blob/4d1c295a2bace9a4f6397cfd5469db31083d477a/docs/third-party-developers/extensibility/hooks/filters.md#woocommerce_store_api_add_to_cart_data) filter.
+
+If you want to add multiple items at once, you need to use the batch endpoint:
+
+```http
+POST /wc/store/v1/batch
+```
+
+The JSON payload for adding multiple items to the cart would look like this:
+
+```json
+{
+	"requests": [
+		{
+			"path": "/wc/store/v1/cart/add-item",
+			"method": "POST",
+			"cache": "no-store",
+			"body": {
+				"id": 26,
+				"quantity": 1
+			},
+			"headers": {
+				"Nonce": "1db1d13784"
+			}
+		},
+		{
+			"path": "/wc/store/v1/cart/add-item",
+			"method": "POST",
+			"cache": "no-store",
+			"body": {
+				"id": 27,
+				"quantity": 1
+			},
+			"headers": {
+				"Nonce": "1db1d13784"
+			}
+		}
+	]
+}
+```
 
 ## Remove Item
 
@@ -345,7 +389,7 @@ POST /cart/remove-item
 | `key`     | string |   Yes    | The key of the cart item to edit. |
 
 ```sh
-curl --header "X-WC-Store-API-Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/remove-item?key=e369853df766fa44e1ed0ff613f563bd
+curl --header "Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/remove-item?key=e369853df766fa44e1ed0ff613f563bd
 ```
 
 Returns the full [Cart Response](#cart-response) on success, or an [Error Response](#error-response) on failure.
@@ -366,7 +410,7 @@ POST /cart/update-item
 | `quantity` | integer |   Yes    | Quantity of this item in the cart. |
 
 ```sh
-curl --header "X-WC-Store-API-Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/update-item?key=e369853df766fa44e1ed0ff613f563bd&quantity=10
+curl --header "Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/update-item?key=e369853df766fa44e1ed0ff613f563bd&quantity=10
 ```
 
 Returns the full [Cart Response](#cart-response) on success, or an [Error Response](#error-response) on failure.
@@ -386,7 +430,7 @@ POST /cart/apply-coupon/
 | `code`    | string |   Yes    | The coupon code you wish to apply to the cart. |
 
 ```sh
-curl --header "X-WC-Store-API-Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/apply-coupon?code=20off
+curl --header "Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/apply-coupon?code=20off
 ```
 
 Returns the full [Cart Response](#cart-response) on success, or an [Error Response](#error-response) on failure.
@@ -406,7 +450,7 @@ POST /cart/remove-coupon/
 | `code`    | string |   Yes    | The coupon code you wish to remove from the cart. |
 
 ```sh
-curl --header "X-WC-Store-API-Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/remove-coupon?code=20off
+curl --header "Nonce: 12345" --request POST https://example-store.com/wp-json/wc/store/v1/cart/remove-coupon?code=20off
 ```
 
 Returns the full [Cart Response](#cart-response) on success, or an [Error Response](#error-response) on failure.
@@ -456,22 +500,24 @@ This endpoint will return an error unless a valid [Nonce Token](nonce-tokens.md)
 POST /cart/select-shipping-rate
 ```
 
-| Attribute    | Type    | Required | Description                         |
-| :----------- | :------ | :------: | :---------------------------------- |
-| `package_id` | integer |  string  | yes                                 | The ID of the shipping package within the cart. |
-| `rate_id`    | string  |   yes    | The chosen rate ID for the package. |
+| Attribute    | Type    | Required | Description                                     |
+| :----------- | :------ | :------: | :---------------------------------------------- |
+| `package_id` | integer |   yes    | The ID of the shipping package within the cart. |
+| `rate_id`    | string  |   yes    | The chosen rate ID for the package.             |
 
 ```sh
-curl --header "X-WC-Store-API-Nonce: 12345" --request POST /cart/select-shipping-rate?package_id=1&rate_id=flat_rate:1
+curl --header "Nonce: 12345" --request POST /cart/select-shipping-rate?package_id=1&rate_id=flat_rate:1
 ```
 
 Returns the full [Cart Response](#cart-response) on success, or an [Error Response](#error-response) on failure.
 
 <!-- FEEDBACK -->
+
 ---
 
 [We're hiring!](https://woocommerce.com/careers/) Come work with us!
 
-🐞 Found a mistake, or have a suggestion? [Leave feedback about this document here.](https://github.com/woocommerce/woocommerce-gutenberg-products-block/issues/new?assignees=&labels=type%3A+documentation&template=--doc-feedback.md&title=Feedback%20on%20./src/StoreApi/docs/cart.md)
+🐞 Found a mistake, or have a suggestion? [Leave feedback about this document here.](https://github.com/woocommerce/woocommerce-blocks/issues/new?assignees=&labels=type%3A+documentation&template=--doc-feedback.md&title=Feedback%20on%20./src/StoreApi/docs/cart.md)
+
 <!-- /FEEDBACK -->
 

@@ -1,11 +1,12 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 /**
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Tokens
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  *
  */
 class WC_Payment_Token_Stripe_Local extends WC_Payment_Token_Stripe {
@@ -31,7 +32,7 @@ class WC_Payment_Token_Stripe_Local extends WC_Payment_Token_Stripe {
 		return apply_filters( 'wc_stripe_get_local_token_formats', array(
 			'gateway_title' => array(
 				'label'   => __( 'Gateway Title', 'woo-stripe-payment' ),
-				'example' => 'P24',
+				'example' => $this->get_brand(),
 				'format'  => '{gateway_title}',
 			)
 		), $this );
@@ -40,4 +41,5 @@ class WC_Payment_Token_Stripe_Local extends WC_Payment_Token_Stripe {
 	public function get_html_classes() {
 		return $this->get_gateway_id();
 	}
+
 }

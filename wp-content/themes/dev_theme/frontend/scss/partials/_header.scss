@@ -68,6 +68,21 @@
             }
           }
         }
+
+        li.dropdown {
+          &:hover {
+            .dropdown-menu {
+              display: block;
+              position: relative;
+
+              @include from (l) {
+                position: absolute;
+                left: 80%;
+                top: -2%;
+              }
+            }
+          }
+        }
       }
     }
   }

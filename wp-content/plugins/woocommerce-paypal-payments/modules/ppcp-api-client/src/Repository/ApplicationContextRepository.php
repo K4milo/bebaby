@@ -11,7 +11,7 @@ namespace WooCommerce\PayPalCommerce\ApiClient\Repository;
 
 use WooCommerce\PayPalCommerce\ApiClient\Entity\ApplicationContext;
 use WooCommerce\PayPalCommerce\WcGateway\Endpoint\ReturnUrlEndpoint;
-use Psr\Container\ContainerInterface;
+use WooCommerce\PayPalCommerce\Vendor\Psr\Container\ContainerInterface;
 
 /**
  * Class ApplicationContextRepository
@@ -50,7 +50,7 @@ class ApplicationContextRepository {
 		$landingpage = $this->settings->has( 'landing_page' ) ?
 			$this->settings->get( 'landing_page' ) : ApplicationContext::LANDING_PAGE_NO_PREFERENCE;
 		$context     = new ApplicationContext(
-			(string) home_url( \WC_AJAX::get_endpoint( ReturnUrlEndpoint::ENDPOINT ) ),
+			network_home_url( \WC_AJAX::get_endpoint( ReturnUrlEndpoint::ENDPOINT ) ),
 			(string) wc_get_checkout_url(),
 			(string) $brand_name,
 			$locale,

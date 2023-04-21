@@ -5,7 +5,7 @@ defined( 'WPINC' ) || exit;
 $__cloud = Cloud::cls();
 
 // This will drop QS param `qc_res` and `domain_hash` also
-$__cloud->update_is_linked_status();
+$__cloud->parse_qc_redir();
 
 $cloud_summary = Cloud::get_summary();
 
@@ -36,6 +36,7 @@ if ( ! $can_token ) {
 	$apply_ts_txt .= ' ' . sprintf( __( 'Next available request time: <code>After %s</code>', 'litespeed-cache' ), Utility::readable_time( $next_available_req, 0, true ) );
 }
 
+$this->form_action();
 ?>
 
 <h3 class="litespeed-title-short">
@@ -110,10 +111,21 @@ if ( ! $can_token ) {
 
 			<div class="litespeed-desc">
 				<?php echo __( 'A Domain Key is required for QUIC.cloud online services.', 'litespeed-cache' ); ?>
-				<br /><?php Doc::notice_ips(); ?>
+
+				<br />
+				<?php if ( ! empty( $cloud_summary[ 'main_domain' ] ) ) : ?>
+					<?php echo __( 'Main domain', 'litespeed-cache' ); ?>: <code><?php echo $cloud_summary[ 'main_domain' ]; ?></code>
+				<?php else: ?>
+					<font class="litespeed-warning">
+						⚠️ <?php echo __( 'Main domain not generated yet', 'litespeed-cache' ); ?>
+					</font>
+				<?php endif; ?>
+
+				<br />
+				<?php Doc::notice_ips(); ?>
 				<div class="litespeed-callout notice notice-success inline">
 					<h4><?php echo __( 'Current Cloud Nodes in Service','litespeed-cache' ); ?>
-						<a class="litespeed-right" href="<?php echo Utility::build_url( Router::ACTION_CLOUD, Cloud::TYPE_CLEAR_CLOUD ); ?>" data-balloon-pos="up" data-balloon-break aria-label='<?php echo __( 'Click to clear all nodes for further redetection.', 'litespeed-cache' ); ?>' data-litespeed-cfm="<?php echo __( 'Are you sure you want to clear all cloud nodes?', 'litespeed-cache' ); ?>"><i class='litespeed-quic-icon'></i></a>
+						<a class="litespeed-right litespeed-redetect" href="<?php echo Utility::build_url( Router::ACTION_CLOUD, Cloud::TYPE_CLEAR_CLOUD ); ?>" data-balloon-pos="up" data-balloon-break aria-label='<?php echo __( 'Click to clear all nodes for further redetection.', 'litespeed-cache' ); ?>' data-litespeed-cfm="<?php echo __( 'Are you sure you want to clear all cloud nodes?', 'litespeed-cache' ); ?>"><i class='litespeed-quic-icon'></i> <?php echo __( 'Redetect', 'litespeed-cache' ); ?></a>
 					</h4>
 					<p>
 						<?php
@@ -130,7 +142,6 @@ if ( ! $can_token ) {
 						?>
 					</p>
 				</div>
-
 			</div>
 		</td>
 	</tr>
@@ -169,7 +180,7 @@ if ( ! $can_token ) {
 
 				<?php if ( ! $this->conf( Base::O_GUEST ) ) : ?>
 					<br /><font class="litespeed-warning litespeed-left10">
-					⚠️ <?php echo __( 'Notice', 'litespeed-cache' ); ?>: <?php echo sprintf( __( 'This option only works when turning %s on.', 'litespeed-cache' ),  '<code>' . Lang::title( Base::O_GUEST ) . '</code>' ); ?>
+					⚠️ <?php echo __( 'Notice', 'litespeed-cache' ); ?>: <?php echo sprintf( __( '%s must be turned ON for this setting to work.', 'litespeed-cache' ),  '<code>' . Lang::title( Base::O_GUEST ) . '</code>' ); ?>
 					</font>
 				<?php endif; ?>
 
@@ -182,12 +193,6 @@ if ( ! $can_token ) {
 				<?php if ( ! $this->conf( Base::O_IMG_OPTM_WEBP ) ) : ?>
 				<br /><font class="litespeed-danger litespeed-left10">
 				⚠️ <?php echo __( 'Notice', 'litespeed-cache' ); ?>: <?php echo sprintf( __( 'You need to turn %s on and finish all WebP generation to get maximum result.', 'litespeed-cache' ),  '<code>' . Lang::title( Base::O_IMG_OPTM_WEBP ) . '</code>' ); ?>
-				</font>
-				<?php endif; ?>
-
-				<?php if ( ! $this->conf( Base::O_IMG_OPTM_WEBP_REPLACE ) ) : ?>
-				<br /><font class="litespeed-danger litespeed-left10">
-				⚠️ <?php echo __( 'Notice', 'litespeed-cache' ); ?>: <?php echo sprintf( __( 'You need to turn %s on to get maximum result.', 'litespeed-cache' ),  '<code>' . Lang::title( Base::O_IMG_OPTM_WEBP_REPLACE ) . '</code>' ); ?>
 				</font>
 				<?php endif; ?>
 			</div>
@@ -226,3 +231,5 @@ if ( ! $can_token ) {
 	</tr>
 
 </tbody></table>
+
+<?php $this->form_end(); ?>

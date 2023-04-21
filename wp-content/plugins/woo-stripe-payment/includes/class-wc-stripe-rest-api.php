@@ -4,18 +4,18 @@ defined( 'ABSPATH' ) || exit();
 
 /**
  *
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  * @package Stripe/Classes
- * @property WC_Stripe_Rest_Controller $order_actions
- * @property WC_Stripe_Rest_Controller $cart
- * @property WC_Stripe_Rest_Controller $checkout
- * @property WC_Stripe_Rest_Controller $payment_intent
- * @property WC_Stripe_Rest_Controller $googlepay
- * @property WC_Stripe_Rest_Controller $settings
- * @property WC_Stripe_Rest_Controller $webhook
- * @property WC_Stripe_Rest_Controller $product_data
- * @property WC_Stripe_Rest_Controller $plaid
- * @property WC_Stripe_Rest_Controller $source
+ * @property WC_Stripe_Rest_Controller  $order_actions
+ * @property WC_Stripe_Rest_Controller  $cart
+ * @property WC_Stripe_Rest_Controller  $checkout
+ * @property WC_Stripe_Rest_Controller  $payment_intent
+ * @property WC_Stripe_Rest_Controller  $googlepay
+ * @property WC_Stripe_Rest_Controller  $settings
+ * @property WC_Stripe_Rest_Controller  $webhook
+ * @property WC_Stripe_Rest_Controller  $product_data
+ * @property WC_Stripe_Rest_Controller  $source
+ * @property \WC_Stripe_Rest_Controller $signup
  */
 class WC_Stripe_Rest_API {
 
@@ -64,8 +64,8 @@ class WC_Stripe_Rest_API {
 		include_once WC_STRIPE_PLUGIN_FILE_PATH . 'includes/controllers/class-wc-stripe-controller-gateway-settings.php';
 		include_once WC_STRIPE_PLUGIN_FILE_PATH . 'includes/controllers/class-wc-stripe-controller-webhook.php';
 		include_once WC_STRIPE_PLUGIN_FILE_PATH . 'includes/controllers/class-wc-stripe-controller-product-data.php';
-		include_once WC_STRIPE_PLUGIN_FILE_PATH . 'includes/controllers/class-wc-stripe-controller-plaid.php';
 		include_once WC_STRIPE_PLUGIN_FILE_PATH . 'includes/controllers/class-wc-stripe-controller-source.php';
+		include_once WC_STRIPE_PLUGIN_FILE_PATH . 'includes/controllers/class-wc-stripe-controller-signup.php';
 
 		foreach ( $this->get_controllers() as $key => $class_name ) {
 			if ( class_exists( $class_name ) ) {
@@ -95,8 +95,8 @@ class WC_Stripe_Rest_API {
 			'settings'       => 'WC_Stripe_Controller_Gateway_Settings',
 			'webhook'        => 'WC_Stripe_Controller_Webhook',
 			'product_data'   => 'WC_Stripe_Controller_Product_Data',
-			'plaid'          => 'WC_Stripe_Controller_Plaid',
-			'source'         => 'WC_Stripe_Controller_Source'
+			'source'         => 'WC_Stripe_Controller_Source',
+			'signup'         => 'WC_Stripe_Controller_SignUp'
 		);
 
 		/**

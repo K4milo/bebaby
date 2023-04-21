@@ -3,12 +3,12 @@ Contributors: Mihail Barinov
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=GSE37FC4Y7CEY
 Tags: widget, plugin, woocommerce, search, product search, woocommerce search, ajax search, live search, custom search, ajax, shortcode, better search, relevance search, relevant search, search by sku, search plugin, shop, store, wordpress search, wp ajax search, wp search, wp search plugin, sidebar, ecommerce, merketing, products, category search, instant-search, search highlight, woocommerce advanced search, woocommerce live search, WooCommerce Plugin, woocommerce product search
 Requires at least: 4.0
-Tested up to: 5.9
-Stable tag: 2.49
+Tested up to: 6.2
+Stable tag: 2.77
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-WooCommerce search plugin. Advanced search features. Support for both AJAX search and search results page.
+Advanced WooCommerce search plugin. Search inside any product field. Support for both AJAX search and search results page.
 
 == Description ==
 
@@ -30,13 +30,13 @@ Advanced Woo Search - powerful search plugin for WooCommerce. Supports **AJAX** 
 * **Stop Words** support to exclude certain words from search.
 * Supports **variable products**
 * **Search results page** support. Plugin search results will be integrated to your current page layout.
-* Automatically synchronize all products data. No need to re-index all content manually after avery change.
+* Automatically synchronize all product data. No need to re-index all content manually after every change.
 * **Plurals** support
 * **Synonyms** support
 * Diacritical marks support
 * Google Analytics support
 * Seamless integration option for easy replacing your current search form
-* **WPML**, **Polylang**, **WooCommerce Multilingual**, **qTranslate** support
+* **WPML**, **Polylang**, **WooCommerce Multilingual**, **qTranslate**, **GTranslate**, etc. support
 * **WPML multi-currency** support
 * Page builder plugins support: Gutenberg, Elementor, Beaver Builder, WPBakery, Divi Builder
 * Custom Product Tabs for WooCommerce plugin support
@@ -44,7 +44,7 @@ Advanced Woo Search - powerful search plugin for WooCommerce. Supports **AJAX** 
 
 ## Premium Features
 
-Additional features available only in PRO plugin version.
+Additional features available only in the PRO plugin version.
 	
 * Search **results layouts**
 * Search **form layouts**
@@ -57,15 +57,18 @@ Additional features available only in PRO plugin version.
 * Product **custom fields** search
 * **Users** search
 * **Advanced settings page** with lot of options
-* **Exclude/include** spicific products by its ids, taxonomies or attributes from search results
+* **Exclude/include** specific products by its ids, taxonomies or attributes from search results
 * Ability to specify **source of image** for search results: featured image, gallery, product content, product short description or set default image if there is no other images
 * **Visibility/stock status option** - choose what catalog visibility and stock status must be for product to displayed in search results
 * Show product **categories** and **tags** in search results
 * AND or OR search logic
 * **Add to cart** button in search results
 * Support for [WooCommerce Brands plugin](https://woocommerce.com/products/brands/)
-* Support for Advanced Custom Fields plugin
-* Support for WCFM - WooCommerce Multivendor Marketplace plugin
+* Support for **Advanced Custom Fields** plugin
+* Support for **WCFM - WooCommerce Multivendor Marketplace** plugin
+* Support for **Dokan – WooCommerce Multivendor Marketplace** plugin
+* Support for **MultiVendorX – Multivendor Marketplace** plugin
+* And the [huge list of other integrations](https://advanced-woo-search.com/guide-category/integrations/)
 
 [Features list](https://advanced-woo-search.com/features/?utm_source=wp-repo&utm_medium=listing&utm_campaign=aws-repo)
 
@@ -74,9 +77,9 @@ Additional features available only in PRO plugin version.
 Here are some additional plugins that were made with love.
 
 * [Advanced Woo Labels](https://wordpress.org/plugins/advanced-woo-labels/) - advanced labels for WooCommerce products
-* [Share This Image](https://wordpress.org/plugins/share-this-image/) - image sharing blugin
+* [Share This Image](https://wordpress.org/plugins/share-this-image/) - image sharing plugin
 
-### More usefull links
+### More useful links
 
 * Plugin [homepage](https://advanced-woo-search.com/?utm_source=wp-repo&utm_medium=listing&utm_campaign=aws-repo).
 * Plugin [documentation](https://advanced-woo-search.com/guide/?utm_source=wp-repo&utm_medium=listing&utm_campaign=aws-repo).
@@ -166,6 +169,139 @@ Yep. This plugin is always compatible with the latest version of Woocommerce?
 4. Plugin settings page. Search results options
 
 == Changelog ==
+
+= 2.77 ( 2023-04-17 ) =
+* Update - Tested with WC 7.6
+* Update - FacetWP plugin integration
+
+= 2.76 ( 2023-04-03 ) =
+* Add - New option to execute or not shortcodes inside the product content
+
+= 2.75 ( 2023-03-20 ) =
+* Add - Support for Product Filters for WooCommerce plugin
+* Update - Tested with WC 7.5
+* Fix - Bug with Divi theme integration
+
+= 2.74 ( 2023-03-06 ) =
+* Add - WP-CLI support
+* Dev - Add aws_force_reindex_product action
+
+= 2.73 ( 2023-02-20 ) =
+* Update - Tested with WC 7.4
+* Update - FacetWP plugin integration
+* Update - WPBakery plugin support
+
+= 2.72 ( 2023-02-06 ) =
+* Add - MultiVendorX – WooCommerce Multivendor Marketplace plugin support
+* Update - Change relevance score for products title
+* Fix - WPML plugin bug when saving settings values
+
+= 2.71 ( 2023-01-23 ) =
+* Update - Tested with WC 7.3
+* Fix - Integration issue with Advanced Woo Labels plugin
+* Fix - Elementor search form widget
+* Fix - Index scheduled products
+
+= 2.70 ( 2023-01-09 ) =
+* Update - Tested with WC 7.2
+
+= 2.69 ( 2022-12-12 ) =
+* Fix - OrderBy value for search results page query
+
+= 2.68 ( 2022-11-28 ) =
+* Update - Support for Perfect Brands for WooCommerce plugin
+* Update - Stop words list
+
+= 2.67 ( 2022-11-14 ) =
+* Update - Tested with WC 7.1
+* Update - Flatsome theme support
+* Fix - Search results page filtering by product attributes
+* Dev - Add aws_sync_index_table filter
+
+= 2.66 ( 2022-10-31 ) =
+* Add - Support for XStore theme
+* Update - Integration with WooCommerce Product Filter by WooBeWoo plugin
+* Update - Hooks for index table products sync
+
+= 2.65 ( 2022-10-17 ) =
+* Add - Support for Pustaka theme
+* Update - Tested with WC 7.0
+* Fix - SQL query for language selection
+
+= 2.64 ( 2022-10-03 ) =
+* Update - Minify assets
+
+= 2.63 ( 2022-09-19 ) =
+* Add - Archive pages number option
+* Update - Tested with WC 6.9
+* Fix - SQL query for language selection
+
+= 2.62 ( 2022-09-05 ) =
+* Dev - Add aws_create_cache_table action
+
+= 2.61 ( 2022-08-22 ) =
+* Update - Tested with WC 6.8
+* Update - Custom Product Tabs for WooCommerce plugin integration
+
+= 2.60 ( 2022-08-08 ) =
+* Update - Css for media styles
+* Update - Admin dashboard notices style
+* Update - Admin page text
+
+= 2.59 ( 2022-07-25 ) =
+* Add - Support for Vandana theme
+* Update - Tested with WC 6.7
+* Update - Admin dashboard plugin notices
+* Fix - WPML plugin integration bug with taxonomies search
+* Fix - Integration bug for WooCommerce Product Filter by WooBeWoo plugin
+* Dev - Add aws_ajax_request_params js hook
+
+= 2.58 ( 2022-07-11 ) =
+* Fix - Bug with synonyms words indexation
+
+= 2.57 ( 2022-06-27 ) =
+* Update - Integration for BeTheme
+* Update - Tested with WC 6.6
+
+= 2.56 ( 2022-06-13 ) =
+* Fix - Bug with search form shortcodes error when id value is not specified
+
+= 2.55 ( 2022-05-30 ) =
+* Add - Support for Savoy theme
+* Update - Admin page integration notices
+* Update - Search form shortcode parameters
+* Fix - Issue with search results caching for certain user roles
+
+= 2.54 ( 2022-05-16 ) =
+* Add - Support for Gecko theme
+* Update - Tested with WC 6.5
+* Update - Admin page integration notices
+* Update - Support for Be theme
+* Fix - Translations for stock statuses inside search results
+* Fix - Error notice for Elementor plugin search module
+* Fix - Php error notice about default options values
+* Fix - Length of products search results descriptions
+* Dev - Fix error with empty search query for results page
+
+= 2.53 ( 2022-04-25 ) =
+* Update - Tested with WC 6.4
+* Update - Support for Avada theme and Avada Builder
+* Dev - Add aws_relevance_scores filter
+
+= 2.52 ( 2022-04-11 ) =
+* Update - Search results styles
+* Update - Product description scrapper for search results
+* Fix - Remove markup for search form input title
+
+= 2.51 ( 2022-03-28 ) =
+* Update - Hooks for index table products sync
+* Fix - Search results page filters for default WooCommerce filter widgets
+* Fix - Astra theme integration. Bug with search form close button
+
+= 2.50 ( 2022-03-22 ) =
+* Update - Tested with WC 6.3
+* Update - Integration with Astra theme
+* Dev - Add aws_search_data_parameters filter
 
 = 2.49 ( 2022-03-07 ) =
 * Update - Admin notices

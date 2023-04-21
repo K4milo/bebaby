@@ -43,7 +43,7 @@ const GooglePayContent = ({getData, components, ...props}) => {
 
 const GooglePayEdit = ({getData, ...props}) => {
     const buttonType = getData('buttonStyle').buttonType;
-    const src = getData('editorIcons')?.[buttonType] || 'long';
+    const src = getData('editorIcons').long;
     return (
         <div className={`gpay-block-editor ${buttonType}`}>
             <img src={src}/>

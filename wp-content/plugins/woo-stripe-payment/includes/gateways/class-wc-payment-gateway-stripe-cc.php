@@ -15,14 +15,17 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 
 	protected $payment_method_type = 'card';
 
+	public $installments;
+
 	public function __construct() {
 		$this->id                 = 'stripe_cc';
-		$this->tab_title          = __( 'Credit Cards', 'woo-stripe-payment' );
+		$this->tab_title          = __( 'Credit/Debit Cards', 'woo-stripe-payment' );
 		$this->template_name      = 'credit-card.php';
 		$this->token_type         = 'Stripe_CC';
 		$this->method_title       = __( 'Stripe Credit Cards', 'woo-stripe-payment' );
 		$this->method_description = __( 'Credit card gateway that integrates with your Stripe account.', 'woo-stripe-payment' );
 		parent::__construct();
+		$this->installments = \PaymentPlugins\Stripe\Installments\InstallmentController::instance();
 	}
 
 	public function get_icon() {
@@ -62,6 +65,7 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 			array(
 				'cardOptions'        => $this->get_card_form_options(),
 				'customFieldOptions' => $this->get_card_custom_field_options(),
+				'cardFormType'       => $this->get_active_card_form_type(),
 				'custom_form'        => $this->is_custom_form_active(),
 				'custom_form_name'   => $this->get_option( 'custom_form' ),
 				'html'               => array( 'card_brand' => sprintf( '<img id="wc-stripe-card" src="%s" />', $this->get_custom_form()['cardBrand'] ) ),
@@ -77,7 +81,10 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 				),
 				'postal_regex'       => $this->get_postal_code_regex(),
 				'notice_location'    => $this->get_option( 'notice_location' ),
-				'notice_selector'    => $this->get_notice_css_selector()
+				'notice_selector'    => $this->get_notice_css_selector(),
+				'installments'       => array(
+					'loading' => __( 'Loading installments...', 'woo-stripe-payment' )
+				)
 			)
 		);
 	}
@@ -137,10 +144,19 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 	public function get_element_options( $options = array() ) {
 		if ( $this->is_custom_form_active() ) {
 			return parent::get_element_options( $this->get_custom_form()['elementOptions'] );
+		} elseif ( $this->is_payment_element_active() ) {
+			$options = \PaymentPlugins\Stripe\Controllers\PaymentIntent::instance()->get_element_options();
+			if ( \PaymentPlugins\Stripe\Link\LinkIntegration::instance()->is_active() ) {
+				$options = array_merge( $options, array( 'payment_method_types' => array( 'card', 'link' ) ) );
+			}
+			$options['appearance'] = array( 'theme' => 'stripe' );
+
+			return parent::get_element_options( $options );
 		}
 
 		return parent::get_element_options();
 	}
+
 
 	/**
 	 * Returns true if custom forms are enabled.
@@ -149,6 +165,10 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 	 */
 	public function is_custom_form_active() {
 		return $this->get_option( 'form_type' ) === 'custom';
+	}
+
+	public function is_payment_element_active() {
+		return $this->get_option( 'form_type' ) === 'payment';
 	}
 
 	public function get_custom_form_template() {
@@ -249,103 +269,6 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 	}
 
 	/**
-	 * @param WC_Order $order
-	 *
-	 * @return array|void
-	 */
-	public function process_zero_total_order( $order ) {
-		if ( defined( WC_Stripe_Constants::PROCESSING_PAYMENT ) ) {
-			$result = $this->save_payment_method( $this->get_new_source_token(), $order );
-			if ( is_wp_error( $result ) ) {
-				wc_add_notice( $result->get_error_message(), 'error' );
-
-				return $this->get_order_error();
-			}
-			// The setup intent ID is no longer needed so remove it from the order
-			$order->delete_meta_data( WC_Stripe_Constants::SETUP_INTENT_ID );
-		} else {
-			$setup_intent        = $this->get_payment_intent_id();
-			$save_payment_method = $this->should_save_payment_method( $order );
-			// if setup intent exists then it was created client side.
-			// attempt to save the payment method
-			if ( $setup_intent && $save_payment_method ) {
-				$result = $this->save_payment_method( $this->get_new_source_token(), $order );
-				if ( is_wp_error( $result ) ) {
-					wc_add_notice( $result->get_error_message(), 'error' );
-
-					return $this->get_order_error();
-				}
-			} elseif ( ! $setup_intent && $save_payment_method ) {
-				// A new payment method is being used but there's no setup intent provided
-				// by client. Create one here
-				$result = $this->does_order_require_action( $order, $this->get_new_source_token() );
-				if ( is_wp_error( $result ) ) {
-					wc_add_notice( sprintf( __( 'Error processing payment. Reason: %s', 'woo-stripe-payment' ), $result->get_error_message() ), 'error' );
-
-					return $this->get_order_error();
-				} elseif ( $result ) {
-					return $result;
-				} else {
-					$this->save_payment_method( $this->get_new_source_token(), $order );
-				}
-			} else {
-				$this->payment_method_token = $this->get_saved_source_id();
-			}
-		}
-
-		return $this->payment_object->process_zero_total_order( $order, $this );
-	}
-
-	/**
-	 * @param WC_Order $order
-	 * @param string   $payment_method
-	 *
-	 * @return array
-	 */
-	private function does_order_require_action( $order, $payment_method ) {
-		if ( ( $intent_id = $order->get_meta( WC_Stripe_Constants::SETUP_INTENT_ID ) ) ) {
-			$intent = $this->gateway->setupIntents->update( $intent_id, array( 'payment_method' => $payment_method ) );
-		} else {
-			$params = array(
-				'confirm'        => true,
-				'payment_method' => $payment_method,
-				'usage'          => 'off_session',
-				'metadata'       => array(
-					'gateway_id' => $this->id,
-					'order_id'   => $order->get_id()
-				)
-			);
-			$this->add_stripe_order_args( $params, $order );
-			$intent = $this->payment_object->get_gateway()->setupIntents->create( apply_filters( 'wc_stripe_setup_intent_params', $params, $order, $this ) );
-		}
-		if ( is_wp_error( $intent ) ) {
-			return $intent;
-		}
-		$order->update_meta_data( WC_Stripe_Constants::SETUP_INTENT_ID, $intent->id );
-		$order->save();
-
-		if ( in_array( $intent->status, array(
-			'requires_action',
-			'requires_payment_method',
-			'requires_source_action',
-			'requires_source',
-			'requires_confirmation'
-		), true )
-		) {
-			return array(
-				'result'   => 'success',
-				'redirect' => $this->get_payment_intent_checkout_url( $intent, $order, 'setup_intent' ),
-			);
-		} elseif ( $intent->status === 'succeeded' ) {
-			$this->payment_method_token = $intent->payment_method;
-			// The setup intent ID is no longer needed so remove it from the order
-			$order->delete_meta_data( WC_Stripe_Constants::SETUP_INTENT_ID );
-
-			return false;
-		}
-	}
-
-	/**
 	 * @since 3.3.32
 	 * @return mixed|void
 	 */
@@ -368,6 +291,37 @@ class WC_Payment_Gateway_Stripe_CC extends WC_Payment_Gateway_Stripe {
 		}
 
 		return $selector;
+	}
+
+	public function is_installment_available() {
+		$order_id = null;
+		if ( is_checkout_pay_page() ) {
+			global $wp;
+			$order_id = absint( $wp->query_vars['order-pay'] );
+		}
+
+		return $this->installments->is_available( $order_id );
+	}
+
+	/**
+	 * @return string Serves as a wrapper for the form_type option with some validations to ensure
+	 *                a payment intent exists in the session.
+	 */
+	protected function get_active_card_form_type() {
+		return $this->get_option( 'form_type' );
+	}
+
+	public function validate_form_type_field( $key, $value ) {
+		if ( $value !== 'payment' && stripe_wc()->advanced_settings->is_active( 'link_enabled' ) ) {
+			$value = 'payment';
+			WC_Admin_Settings::add_error( __( 'Only the Stripe payment form can be used while Link is enabled.', 'woo-stripe-payment' ) );
+		}
+
+		return $value;
+	}
+
+	public function is_deferred_intent_creation() {
+		return $this->is_payment_element_active();
 	}
 
 }

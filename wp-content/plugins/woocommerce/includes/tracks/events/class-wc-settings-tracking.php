@@ -5,6 +5,8 @@
  * @package WooCommerce\Tracks
  */
 
+use Automattic\WooCommerce\Internal\Admin\WCAdminAssets;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -27,12 +29,23 @@ class WC_Settings_Tracking {
 	protected $updated_options = array();
 
 	/**
+	 * Toggled options.
+	 *
+	 * @var array
+	 */
+	protected $toggled_options = array(
+		'enabled'  => array(),
+		'disabled' => array(),
+	);
+
+	/**
 	 * Init tracking.
 	 */
 	public function init() {
 		add_action( 'woocommerce_settings_page_init', array( $this, 'track_settings_page_view' ) );
 		add_action( 'woocommerce_update_option', array( $this, 'add_option_to_list' ) );
 		add_action( 'woocommerce_update_options', array( $this, 'send_settings_change_event' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'possibly_add_settings_tracking_scripts' ) );
 	}
 
 	/**
@@ -78,6 +91,12 @@ class WC_Settings_Tracking {
 			return;
 		}
 
+		// Check and save toggled options.
+		if ( in_array( $new_value, array( 'yes', 'no' ), true ) && in_array( $old_value, array( 'yes', 'no' ), true ) ) {
+			$option_state                             = 'yes' === $new_value ? 'enabled' : 'disabled';
+			$this->toggled_options[ $option_state ][] = $option_name;
+		}
+
 		$this->updated_options[] = $option_name;
 	}
 
@@ -85,7 +104,7 @@ class WC_Settings_Tracking {
 	 * Send a Tracks event for WooCommerce options that changed values.
 	 */
 	public function send_settings_change_event() {
-		global $current_tab;
+		global $current_tab, $current_section;
 
 		if ( empty( $this->updated_options ) ) {
 			return;
@@ -95,9 +114,14 @@ class WC_Settings_Tracking {
 			'settings' => implode( ',', $this->updated_options ),
 		);
 
-		if ( isset( $current_tab ) ) {
-			$properties['tab'] = $current_tab;
+		foreach ( $this->toggled_options as $state => $options ) {
+			if ( ! empty( $options ) ) {
+				$properties[ $state ] = implode( ',', $options );
+			}
 		}
+
+		$properties['tab']     = $current_tab ?? '';
+		$properties['section'] = $current_section ?? '';
 
 		WC_Tracks::record_event( 'settings_change', $properties );
 	}
@@ -114,5 +138,23 @@ class WC_Settings_Tracking {
 		);
 
 		WC_Tracks::record_event( 'settings_view', $properties );
+	}
+
+	/**
+	 * Adds the tracking scripts for product setting pages.
+	 *
+	 * @param string $hook Page hook.
+	 */
+	public function possibly_add_settings_tracking_scripts( $hook ) {
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification
+		if (
+			! isset( $_GET['page'] ) ||
+			'wc-settings' !== wp_unslash( $_GET['page'] )
+		) {
+			return;
+		}
+		// phpcs:enable
+
+		WCAdminAssets::register_script( 'wp-admin-scripts', 'settings-tracking', false );
 	}
 }

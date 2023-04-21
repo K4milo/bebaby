@@ -1,10 +1,11 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 /**
  * Controller class that perfors cart operations for client side requests.
  *
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  * @package Stripe/Controllers
  *
  */
@@ -84,7 +85,7 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 
 	/**
 	 *
-	 * @param int $qty
+	 * @param int             $qty
 	 * @param WP_REST_Request $request
 	 */
 	public function validate_quantity( $qty, $request ) {
@@ -101,7 +102,7 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 	 * @param WP_REST_Request $request
 	 */
 	public function update_shipping_method( $request ) {
-		wc_maybe_define_constant( 'WOOCOMMERCE_CART', true );
+		wc_maybe_define_constant( 'WOOCOMMERCE_CHECKOUT', true );
 
 		$payment_method = $request->get_param( 'payment_method' );
 		/**
@@ -114,14 +115,14 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 
 		$this->add_ready_to_calc_shipping();
 
-		// if this request is coming from product page, stash cart and use product cart
+		// if this request is coming from product page, add the item to the cart
 		if ( 'product' == $request->get_param( 'page_id' ) ) {
-			wc_stripe_stash_cart( WC()->cart );
-		} else {
-			WC()->cart->calculate_totals();
+			$this->empty_cart( WC()->cart );
+			WC()->cart->add_to_cart( ...array_values( $this->get_add_to_cart_args( $request ) ) );
 		}
+		WC()->cart->calculate_totals();
 
-		$response = rest_ensure_response(
+		return rest_ensure_response(
 			apply_filters(
 				'wc_stripe_update_shipping_method_response',
 				array(
@@ -143,11 +144,6 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 				)
 			)
 		);
-		if ( 'product' == $request->get_param( 'page_id' ) ) {
-			wc_stripe_restore_cart( WC()->cart );
-		}
-
-		return $response;
 	}
 
 	/**
@@ -155,7 +151,7 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 	 * @param WP_REST_Request $request
 	 */
 	public function update_shipping_address( $request ) {
-		wc_maybe_define_constant( 'WOOCOMMERCE_CART', true );
+		wc_maybe_define_constant( 'WOOCOMMERCE_CHECKOUT', true );
 
 		$address        = $request->get_param( 'address' );
 		$payment_method = $request->get_param( 'payment_method' );
@@ -170,10 +166,10 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 			$this->add_ready_to_calc_shipping();
 
 			if ( 'product' == $request->get_param( 'page_id' ) ) {
-				wc_stripe_stash_cart( WC()->cart );
-			} else {
-				WC()->cart->calculate_totals();
+				$this->empty_cart( WC()->cart );
+				WC()->cart->add_to_cart( ...array_values( $this->get_add_to_cart_args( $request ) ) );
 			}
+			WC()->cart->calculate_totals();
 
 			if ( ! $this->has_shipping_methods( $gateway->get_shipping_packages() ) ) {
 				throw new Exception( 'No valid shipping methods.' );
@@ -212,9 +208,6 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 				)
 			);
 		}
-		if ( 'product' == $request->get_param( 'page_id' ) ) {
-			wc_stripe_restore_cart( WC()->cart );
-		}
 
 		return $response;
 	}
@@ -226,7 +219,7 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function add_to_cart( $request ) {
-		wc_maybe_define_constant( 'WOOCOMMERCE_CART', true );
+		wc_maybe_define_constant( 'WOOCOMMERCE_CHECKOUT', true );
 
 		$payment_method = $request->get_param( 'payment_method' );
 		/**
@@ -237,20 +230,19 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 		$cart_args = $this->get_add_to_cart_args( $request );
 		list( $product_id, $qty, $variation_id, $variation ) = array_values( $cart_args );
 
-		// stash cart so clean calculation can be performed.
-		wc_stripe_stash_cart( WC()->cart, false );
+		$this->empty_cart( WC()->cart );
 
 		if ( WC()->cart->add_to_cart( $product_id, $qty, $variation_id, $variation ) == false ) {
 			return new WP_Error( 'cart-error', $this->get_error_messages(), array( 'status' => 200 ) );
 		} else {
-			$response = rest_ensure_response(
+			return rest_ensure_response(
 				apply_filters(
 					'wc_stripe_add_to_cart_response',
 					array(
 						'data' => $gateway->add_to_cart_response(
 							array(
-								'total'           => round( WC()->cart->total, 2 ),
-								'subtotal'        => round( WC()->cart->subtotal, 2 ),
+								'total'           => wc_format_decimal( WC()->cart->total, 2 ),
+								'subtotal'        => wc_format_decimal( WC()->cart->subtotal, 2 ),
 								'totalCents'      => wc_stripe_add_number_precision( WC()->cart->total ),
 								'displayItems'    => $gateway->get_display_items( 'cart' ),
 								'shippingOptions' => $gateway->get_formatted_shipping_methods(),
@@ -261,12 +253,6 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 					$request
 				)
 			);
-			// save the product cart so it can be used for shipping calculations etc.
-			wc_stripe_stash_product_cart( WC()->cart, $this->filtered_body_params( $request->get_body_params(), array_keys( $cart_args ) ) );
-			// put cart contents back to how they were before.
-			wc_stripe_restore_cart( WC()->cart );
-
-			return $response;
 		}
 	}
 
@@ -276,43 +262,51 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 	 * @param WP_REST_Request $request
 	 */
 	public function cart_calculation( $request ) {
-		wc_maybe_define_constant( 'WOOCOMMERCE_CART', true );
+		wc_maybe_define_constant( 'WOOCOMMERCE_CHECKOUT', true );
+
+		$cart = clone WC()->cart;
+
+		// clear cloned cart
+		$this->empty_cart( $cart );
 
 		$cart_args = $this->get_add_to_cart_args( $request );
 		list( $product_id, $qty, $variation_id, $variation ) = array_values( $cart_args );
 
-		wc_stripe_stash_cart( WC()->cart, false, $this->filtered_body_params( $request->get_body_params(), array_keys( $cart_args ) ) );
+		if ( $cart->add_to_cart( $product_id, $qty, $variation_id, $variation ) ) {
+			//new WC_Cart_Totals($cart);
+			$cart->calculate_totals();
 
-		if ( WC()->cart->add_to_cart( $product_id, $qty, $variation_id, $variation ) ) {
-			$payment_method = $request->get_param( 'payment_method' );
-			/**
-			 *
-			 * @var WC_Payment_Gateway_Stripe $gateway
-			 */
-			$gateway  = WC()->payment_gateways()->payment_gateways()[ $payment_method ];
+			$gateways = $this->get_supported_gateways();
+
 			$response = rest_ensure_response(
 				apply_filters(
-					'wc_stripe_add_to_cart_response',
+					'wc_stripe_cart_calculation_response',
 					array(
-						'data' => $gateway->add_to_cart_response(
-							array(
-								'total'           => round( WC()->cart->total, 2 ),
-								'subtotal'        => round( WC()->cart->subtotal, 2 ),
-								'totalCents'      => wc_stripe_add_number_precision( WC()->cart->total ),
-								'displayItems'    => $gateway->get_display_items( 'cart' ),
-								'shippingOptions' => $gateway->get_shipping_methods(),
-							)
-						),
+						'data' => array_reduce( $gateways, function ( $carry, $item ) use ( $cart ) {
+							/**
+							 *
+							 * @var WC_Payment_Gateway_Stripe $item
+							 */
+							$carry[ $item->id ] = $item->add_to_cart_response(
+								array(
+									'total'           => wc_format_decimal( $cart->total, 2 ),
+									'subtotal'        => wc_format_decimal( $cart->subtotal, 2 ),
+									'totalCents'      => wc_stripe_add_number_precision( $cart->total ),
+									'displayItems'    => $item->get_display_items_for_cart( $cart ),
+									'shippingOptions' => $item->get_formatted_shipping_methods(),
+								)
+							);
+
+							return $carry;
+						}, [] ),
 					),
-					$gateway,
+					$gateways,
 					$request
 				)
 			);
 		} else {
 			$response = new WP_Error( 'cart-error', $this->get_error_messages(), array( 'status' => 200 ) );
 		}
-		wc_stripe_stash_product_cart( WC()->cart, $this->filtered_body_params( $request->get_body_params(), array_keys( $cart_args ) ) );
-		wc_stripe_restore_cart( WC()->cart );
 		wc_clear_notices();
 
 		return $response;
@@ -339,8 +333,14 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 				}
 			}
 		}
-		foreach ( $notices as $notice ) {
-			$message .= sprintf( ' %s', $notice );
+		foreach ( $notices as $notice_by_type ) {
+			if ( is_array( $notice_by_type ) ) {
+				foreach ( $notice_by_type as $notice ) {
+					$message .= sprintf( ' %s', $notice['notice'] );
+				}
+			} else {
+				$message .= sprintf( ' %s', $notice_by_type );
+			}
 		}
 
 		return trim( $message );
@@ -361,33 +361,6 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 		return false;
 	}
 
-	/**
-	 * Return an array of arguments used to add a product to the cart.
-	 *
-	 * @param WP_REST_Request $request
-	 *
-	 * @return array
-	 * @since 3.2.11
-	 */
-	private function get_add_to_cart_args( $request ) {
-		$args      = array(
-			'product_id'   => $request->get_param( 'product_id' ),
-			'qty'          => $request->get_param( 'qty' ),
-			'variation_id' => $request->get_param( 'variation_id' )
-		);
-		$variation = array();
-		if ( $request->get_param( 'variation_id' ) ) {
-			foreach ( $request->get_params() as $key => $value ) {
-				if ( 'attribute_' === substr( $key, 0, 10 ) ) {
-					$variation[ sanitize_title( wp_unslash( $key ) ) ] = wp_unslash( $value );
-				}
-			}
-		}
-		$args[] = $variation;
-
-		return $args;
-	}
-
 	private function filtered_body_params( $params, $filter_keys ) {
 		$filter_keys = array_merge( array_filter( $filter_keys ), array( 'payment_method', 'currency', 'page_id' ) );
 
@@ -395,4 +368,5 @@ class WC_Stripe_Controller_Cart extends WC_Stripe_Rest_Controller {
 			return ! in_array( $key, $filter_keys, true );
 		}, ARRAY_FILTER_USE_KEY );
 	}
+
 }

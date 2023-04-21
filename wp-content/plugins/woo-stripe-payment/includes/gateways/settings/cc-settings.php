@@ -20,7 +20,7 @@ return array(
 	'title_text'        => array(
 		'type'        => 'text',
 		'title'       => __( 'Title', 'woo-stripe-payment' ),
-		'default'     => __( 'Credit Cards', 'woo-stripe-payment' ),
+		'default'     => __( 'Credit/Debit Cards', 'woo-stripe-payment' ),
 		'desc_tip'    => true,
 		'description' => __( 'Title of the credit card gateway' ),
 	),
@@ -35,7 +35,7 @@ return array(
 		'title'       => __( 'Credit Card Display', 'woo-stripe-payment' ),
 		'type'        => 'select',
 		'class'       => 'wc-enhanced-select',
-		'options'     => wp_list_pluck( $this->get_method_formats(), 'example' ),
+		'options'     => wp_list_pluck( $this->get_payment_method_formats(), 'example' ),
 		'value'       => '',
 		'default'     => 'type_ending_in',
 		'desc_tip'    => true,
@@ -91,7 +91,7 @@ return array(
 	),
 	'cards'             => array(
 		'type'        => 'multiselect',
-		'title'       => __( 'Accepted Payment Methods', 'woo-stripe-payment' ),
+		'title'       => __( 'Credit Card Icons', 'woo-stripe-payment' ),
 		'class'       => 'wc-enhanced-select stripe-accepted-cards',
 		'default'     => array( 'amex', 'discover', 'visa', 'mastercard' ),
 		'options'     => array(
@@ -115,11 +115,13 @@ return array(
 		'title'       => __( 'Card Form', 'woo-stripe-payment' ),
 		'type'        => 'select',
 		'options'     => array(
-			'inline' => __( 'Stripe form', 'woo-stripe-payment' ),
-			'custom' => __( 'Custom form', 'woo-stripe-payment' ),
+			'inline'  => __( 'Stripe inline form', 'woo-stripe-payment' ),
+			'payment' => __( 'Stripe payment form', 'woo-stripe-payment' ),
+			'custom'  => __( 'Custom form', 'woo-stripe-payment' ),
 		),
-		'default'     => 'inline',
-		'description' => __( 'The Stripe form option displays a CC form rendered by Stripe. It works well with most themes. The custom card forms are offered if you want more options on the CC form design.', 'woo-stripe-payment' ),
+		'default'     => 'payment',
+		'desc_tip'    => true,
+		'description' => __( 'The card form design that displays on payment pages.', 'woo-stripe-payment' ),
 	),
 	'custom_form'       => array(
 		'title'             => __( 'Custom Form', 'woo-stripe-payment' ),

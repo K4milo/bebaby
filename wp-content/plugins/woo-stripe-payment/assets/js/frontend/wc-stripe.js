@@ -20,11 +20,19 @@
         this.payment_token_received = false;
         this.stripe = stripe;
         this.fields = checkoutFields;
-        this.elements = stripe.elements($.extend({}, {
-            locale: 'auto'
-        }, this.get_element_options()));
+        this.elements = this.create_stripe_elements();
         this.initialize();
     };
+
+    wc_stripe.BaseGateway.prototype.create_stripe_elements = function () {
+        return stripe.elements($.extend({}, {
+            locale: 'auto'
+        }, this.get_element_options()));
+    }
+
+    wc_stripe.BaseGateway.prototype.is_user_logged_in = function () {
+        return this.params.user_id > 0;
+    }
 
     wc_stripe.BaseGateway.prototype.get_page = function () {
         var page = wc_stripe_params_v3.page;
@@ -91,6 +99,13 @@
 
     wc_stripe.BaseGateway.prototype.get_error_message = function (message) {
         if (typeof message == 'object') {
+            if (message.hasOwnProperty('message')) {
+                if (message.message.indexOf('server_side_confirmation_beta=v1') > -1) {
+                    message.code = 'server_side_confirmation_beta';
+                } else if (message.message.indexOf('params.payment_method_data.billing_details.phone') > -1) {
+                    message.code = 'phone_required';
+                }
+            }
             if (message.code && wc_stripe_messages[message.code]) {
                 message = wc_stripe_messages[message.code];
             } else {
@@ -106,11 +121,17 @@
         var $container = $(this.message_container);
 
         if (!$container.length || (!skip_form && $container.closest('form').length)) {
+            if (!$container.length) {
+                $container = $(this.container);
+            }
             $container = $container.closest('form');
         }
 
         $container.prepend(message);
-        $container.removeClass('processing').unblock();
+        $container.removeClass('processing')
+        if ($().unblock) {
+            $container.unblock();
+        }
         $container.find('.input-text, select, input:checkbox').trigger('blur');
 
         if ($.scroll_to_notices) {
@@ -166,20 +187,21 @@
      * Some 3rd party plugins give priority to the shipping address over the billing address
      */
     wc_stripe.BaseGateway.prototype.get_billing_prefix = function () {
+        var prefix = 'billing';
         if ($('[name="billing_same_as_shipping"]').length && $('[name="billing_same_as_shipping"]').is(':checked')) {
-            return 'shipping';
+            prefix = 'shipping';
         }
         if ($('[name="bill_to_different_address"]').length) {
             if ($('[name="bill_to_different_address"]').length > 1) {
                 if ($('[name="bill_to_different_address"]:checked').val() === 'same_as_shipping') {
-                    return 'shipping';
+                    prefix = 'shipping';
                 }
             } else if (!$('[name="bill_to_different_address"]').is(':checked')) {
-                return 'shipping';
+                prefix = 'shipping';
             }
         }
-
-        return 'billing';
+        var filtered_prefix = $(document.body).triggerHandler('wc_stripe_get_billing_prefix', [prefix]);
+        return typeof filtered_prefix === 'undefined' ? prefix : filtered_prefix;
     }
 
     wc_stripe.BaseGateway.prototype.should_save_method = function () {
@@ -524,7 +546,7 @@
     }
 
     wc_stripe.BaseGateway.prototype.ajax_before_send = function (xhr) {
-        if (this.params.user_id > 0) {
+        if (this.is_user_logged_in()) {
             xhr.setRequestHeader('X-WP-Nonce', this.params.rest_nonce);
         }
     };
@@ -590,19 +612,16 @@
         }.bind(this))
     }
 
-    wc_stripe.BaseGateway.prototype.handle_card_action = function (obj) {
+    wc_stripe.BaseGateway.prototype.handle_next_action = function (obj) {
         try {
-            this.stripe.handleCardAction(obj.client_secret).then(function (result) {
+            this.stripe[this.handleActionMethod](obj.client_secret).then(function (result) {
                 if (result.error) {
+                    this.unblock();
                     this.payment_token_received = false;
-                    this.submit_error(result.error);
-                    this.sync_payment_intent(obj.order_id, obj.client_secret).catch(function (response) {
-                        this.submit_error(response.message);
-                    }.bind(this));
-                    return;
+                    return this.submit_error(result.error);
                 }
                 if (this.is_current_page('order_pay')) {
-                    this.get_form().submit();
+                    this.get_form().trigger('submit');
                 } else {
                     this.process_payment(obj.order_id, obj.order_key);
                 }
@@ -615,15 +634,15 @@
         }
     }
 
-    wc_stripe.BaseGateway.prototype.handle_card_setup = function (obj) {
+    wc_stripe.BaseGateway.prototype.handle_payment_method_setup = function (obj) {
         try {
-            this.stripe.confirmCardSetup(obj.client_secret).then(function (result) {
+            this.stripe[this.setupActionMethod](obj.client_secret).then(function (result) {
                 if (result.error) {
                     this.payment_token_received = false;
                     return this.submit_error(result.error);
                 }
                 if (this.is_current_page('order_pay')) {
-                    this.get_form().submit();
+                    this.get_form().trigger('submit');
                 } else {
                     this.process_payment(obj.order_id, obj.order_key);
                 }
@@ -644,9 +663,9 @@
                 if (obj && obj.hasOwnProperty('client_secret') && obj.gateway_id === this.gateway_id) {
                     history.pushState({}, '', window.location.pathname);
                     if (obj.type === 'intent') {
-                        this.handle_card_action(obj);
+                        this.handle_next_action(obj);
                     } else {
-                        this.handle_card_setup(obj);
+                        this.handle_payment_method_setup(obj);
                     }
                 }
             } catch (err) {
@@ -665,19 +684,40 @@
     wc_stripe.BaseGateway.prototype.sync_payment_intent = function (order_id, client_secret) {
         return new Promise(function (resolve, reject) {
             // call intent api
-            $.when($.ajax({
+            $.ajax({
                 method: 'POST',
                 dataType: 'json',
                 url: this.params.routes.sync_intent,
                 data: {order_id: order_id, client_secret: client_secret},
                 beforeSend: this.ajax_before_send.bind(this)
-            })).done(function (response) {
+            }).done(function (response) {
                 if (response.code) {
                     reject(response);
                 } else {
                     resolve(response);
                 }
             }).fail(function (xhr, textStatus, errorThrown) {
+                this.submit_error(errorThrown);
+            }.bind(this));
+        }.bind(this))
+    }
+
+    wc_stripe.BaseGateway.prototype.create_setup_intent = function () {
+        return new Promise(function (resolve, reject) {
+            $.ajax({
+                method: 'POST',
+                dataType: 'json',
+                data: {payment_method: this.gateway_id},
+                url: this.params.routes.setup_intent,
+                beforeSend: this.ajax_before_send.bind(this)
+            }).done(function (response) {
+                if (response.code) {
+                    reject(response.message);
+                } else {
+                    this.client_secret = response.intent.client_secret;
+                    resolve(response);
+                }
+            }.bind(this)).fail(function (xhr, textStatus, errorThrown) {
                 this.submit_error(errorThrown);
             }.bind(this));
         }.bind(this))
@@ -728,18 +768,18 @@
         }
     };
 
-    wc_stripe.BaseGateway.prototype.update_shipping_address = function (ev) {
+    wc_stripe.BaseGateway.prototype.update_shipping_address = function (ev, data) {
         return new Promise(function (resolve, reject) {
             $.ajax({
                 url: this.params.routes.shipping_address,
                 method: 'POST',
                 dataType: 'json',
-                data: {
+                data: $.extend({}, {
                     address: this.map_address(ev.shippingAddress),
                     payment_method: this.gateway_id,
                     page_id: this.get_page(),
                     currency: this.get_currency()
-                },
+                }, data),
                 beforeSend: this.ajax_before_send.bind(this)
             }).done(function (response) {
                 if (response.code) {
@@ -755,18 +795,18 @@
         }.bind(this));
     };
 
-    wc_stripe.BaseGateway.prototype.update_shipping_method = function (ev) {
+    wc_stripe.BaseGateway.prototype.update_shipping_method = function (ev, data) {
         return new Promise(function (resolve, reject) {
             $.ajax({
                 url: this.params.routes.shipping_method,
                 method: 'POST',
                 dataType: 'json',
-                data: {
+                data: $.extend({}, {
                     shipping_method: ev.shippingOption.id,
                     payment_method: this.gateway_id,
                     currency: this.get_currency(),
                     page_id: this.get_page()
-                },
+                }, data),
                 beforeSend: this.ajax_before_send.bind(this)
             }).done(function (response) {
                 if (response.code) {
@@ -838,7 +878,7 @@
     };
 
     wc_stripe.CheckoutGateway.prototype.has3DSecureParams = function () {
-        if (this.is_current_page('order_pay') || this.is_change_payment_method()) {
+        if (this.is_current_page('order_pay') || this.is_current_page('checkout') || this.is_change_payment_method()) {
             if (window.location.hash && typeof window.location.hash === 'string') {
                 var match = window.location.hash.match(/response=(.*)/);
                 if (match) {
@@ -855,7 +895,7 @@
                                 $('[name="terms"]').prop('checked', true);
                             }.bind(this));
                             history.pushState({}, '', window.location.pathname + window.location.search);
-                            this.handle_card_action(obj);
+                            this.handle_next_action(obj);
                         }
                     } catch (err) {
 
@@ -936,7 +976,7 @@
 
     wc_stripe.CheckoutGateway.prototype.block = function () {
         if ($().block) {
-            $('form.checkout').block({
+            this.get_form().block({
                 message: null,
                 overlayCSS: {
                     background: '#fff',
@@ -949,7 +989,7 @@
 
     wc_stripe.CheckoutGateway.prototype.unblock = function () {
         if ($().block) {
-            $('form.checkout').unblock();
+            this.get_form().unblock();
         }
     };
 
@@ -991,6 +1031,10 @@
     wc_stripe.CheckoutGateway.prototype.trigger_payment_method_selected = function () {
         this.on_payment_method_selected(null, $('[name="payment_method"]:checked').val());
     };
+
+    wc_stripe.CheckoutGateway.prototype.show_new_payment_method = function () {
+        $('[name="' + this.gateway_id + '_payment_type_key"][value="new"').trigger('click');
+    }
 
     wc_stripe.CheckoutGateway.prototype.on_payment_method_selected = function (e, payment_method) {
         if (payment_method === this.gateway_id) {
@@ -1042,6 +1086,37 @@
         $('[name="' + this.gateway_id + '_save_source_key' + '"]').prop('checked', bool);
     }
 
+    wc_stripe.CheckoutGateway.prototype.process_order_pay = function () {
+        var data = this.get_form().serializeArray();
+        data.push({name: '_wpnonce', value: this.params.rest_nonce});
+        data.push({name: 'order_id', value: this.params.order_id});
+        data.push({name: 'order_key', value: this.params.order_key});
+        this.block();
+        $.ajax({
+            url: this.params.routes.order_pay,
+            method: 'POST',
+            dataType: 'json',
+            data: $.param(data)
+        }).done(function (response) {
+            if (response.success) {
+                if (response.needs_confirmation) {
+                    if (response.data) {
+                        this.handle_next_action(response.data);
+                    } else {
+                        window.location.href = response.redirect;
+                    }
+                } else {
+                    this.get_form().trigger('submit');
+                }
+            } else {
+                this.submit_error(response.message);
+            }
+        }.bind(this)).fail(function (jqXHR, textStatus, errorThrown) {
+            this.unblock();
+            this.submit_error(errorThrown);
+        }.bind(this))
+    }
+
     /************** Product Gateway ***************/
 
     wc_stripe.ProductGateway = function () {
@@ -1059,6 +1134,14 @@
         $(this.container).css('max-width', this.buttonWidth + 'px');
     };
 
+    wc_stripe.ProductGateway.prototype.update_shipping_address = function (ev) {
+        return wc_stripe.BaseGateway.prototype.update_shipping_address.call(this, ev, this.get_add_to_cart_data());
+    }
+
+    wc_stripe.ProductGateway.prototype.update_shipping_method = function (ev) {
+        return wc_stripe.BaseGateway.prototype.update_shipping_method.call(this, ev, this.get_add_to_cart_data());
+    }
+
     wc_stripe.ProductGateway.prototype.get_quantity = function () {
         return parseInt($('[name="quantity"]').val());
     };
@@ -1070,6 +1153,7 @@
     wc_stripe.ProductGateway.prototype.found_variation = function (e, variation) {
         var data = this.get_gateway_data();
         data.product.price = variation.display_price;
+        data.product.price_cents = variation.display_price_cents;
         data.needs_shipping = !variation.is_virtual;
         data.product.variation = variation;
         this.set_gateway_data(data);
@@ -1099,12 +1183,14 @@
     };
 
     wc_stripe.ProductGateway.prototype.is_variable_product = function () {
-        return $('[name="variation_id"]').length > 0;
+        var variation = this.get_product_data().variation;
+        return !!variation || $('[name="variation_id"]').length > 0;
     };
 
     wc_stripe.ProductGateway.prototype.variable_product_selected = function () {
+        var variation = this.get_product_data().variation
         var val = $('input[name="variation_id"]').val();
-        return !!val && "0" != val;
+        return !!variation || (!!val && "0" != val);
     };
 
     wc_stripe.ProductGateway.prototype.get_product_data = function () {
@@ -1121,17 +1207,21 @@
         return $(this.container).closest('form');
     }
 
+    wc_stripe.ProductGateway.prototype.get_add_to_cart_data = function () {
+        return {
+            product_id: this.get_product_data().id,
+            variation_id: this.is_variable_product() ? $('[name="variation_id"]').val() : 0,
+            qty: $('[name="quantity"]').val(),
+            payment_method: this.gateway_id,
+            currency: this.get_currency(),
+            page_id: this.get_page()
+        }
+    }
+
     wc_stripe.ProductGateway.prototype.add_to_cart = function () {
         return new Promise(function (resolve, reject) {
             this.block();
-            var data = {
-                product_id: this.get_product_data().id,
-                variation_id: this.is_variable_product() ? $('[name="variation_id"]').val() : 0,
-                qty: $('[name="quantity"]').val(),
-                payment_method: this.gateway_id,
-                currency: this.get_currency(),
-                page_id: this.get_page()
-            };
+            var data = this.get_add_to_cart_data();
             var fields = this.get_form().find(':not([name="add-to-cart"],[name="quantity"],[name^="attribute_"],[name="variation_id"])').serializeArray();
             if (fields) {
                 for (var i in fields) {
@@ -1163,34 +1253,42 @@
         }.bind(this));
     };
 
-    wc_stripe.ProductGateway.prototype.cart_calculation = function (variation_id) {
-        return new Promise(function (resolve, reject) {
+    wc_stripe.ProductGateway.prototype.cart_calculation = function () {
+        if (wc_stripe.processing_calculation) {
+            return wc_stripe.processing_calculation;
+        }
+        wc_stripe.processing_calculation = new Promise(function (resolve, reject) {
+            var variation = this.get_product_data().variation;
             $.ajax({
                 url: this.params.routes.cart_calculation,
                 method: 'POST',
                 dataType: 'json',
-                data: $.extend({}, {
-                    product_id: this.get_product_data().id,
-                    variation_id: this.is_variable_product() && variation_id ? variation_id : 0,
-                    qty: $('[name="quantity"]').val(),
-                    currency: this.get_currency(),
-                    payment_method: this.gateway_id
-                }, this.get_product_variations()),
+                data: $.extend({}, this.get_add_to_cart_data(), this.get_product_variations(), {
+                    variation_id: variation.variation_id
+                }),
                 beforeSend: this.ajax_before_send.bind(this)
             }).done(function (response) {
                 if (response.code) {
-                    this.cart_calculation_error = true;
                     reject(response);
                 } else {
-                    this.set_total_price(response.data.total);
-                    this.set_total_price_cents(response.data.totalCents);
-                    this.set_display_items(response.data.displayItems);
                     resolve(response.data);
                 }
             }.bind(this)).fail(function () {
-            }.bind(this));
+                reject();
+            })
+        }.bind(this)).finally(function () {
+            wc_stripe.processing_calculation = false;
         }.bind(this));
+        return wc_stripe.processing_calculation;
     };
+
+    wc_stripe.ProductGateway.prototype.update_from_cart_calculation = function (data) {
+        if (data && data[this.gateway_id]) {
+            this.set_total_price(data[this.gateway_id].total);
+            this.set_total_price_cents(data[this.gateway_id].totalCents);
+            this.set_display_items(data[this.gateway_id].displayItems);
+        }
+    }
 
     wc_stripe.ProductGateway.prototype.get_product_variations = function () {
         var variations = {};
@@ -1232,6 +1330,9 @@
 
     wc_stripe.GooglePay = function () {
     };
+
+    wc_stripe.GooglePay.prototype.handleActionMethod = 'handleCardAction';
+    wc_stripe.GooglePay.prototype.setupActionMethod = 'confirmCardSetup';
 
     var googlePayBaseRequest = {
         apiVersion: 2,
@@ -1282,19 +1383,19 @@
         };
     };
 
-    wc_stripe.GooglePay.prototype.update_payment_data = function (data) {
+    wc_stripe.GooglePay.prototype.update_payment_data = function (data, extraData) {
         return new Promise(function (resolve, reject) {
             var shipping_method = data.shippingOptionData.id == 'default' ? null : data.shippingOptionData.id;
             $.when($.ajax({
                 url: this.params.routes.payment_data,
                 dataType: 'json',
                 method: 'POST',
-                data: {
+                data: $.extend({}, {
                     address: this.map_address(data.shippingAddress),
                     shipping_method: shipping_method,
                     page_id: this.get_page(),
                     currency: this.get_currency()
-                },
+                }, extraData),
                 beforeSend: this.ajax_before_send.bind(this)
             })).done(function (response) {
                 if (response.code) {
@@ -1308,9 +1409,9 @@
         }.bind(this));
     };
 
-    wc_stripe.GooglePay.prototype.on_payment_data_changed = function (address) {
+    wc_stripe.GooglePay.prototype.on_payment_data_changed = function (data) {
         return new Promise(function (resolve) {
-            this.update_payment_data(address).then(function (response) {
+            this.update_payment_data(data).then(function (response) {
                 resolve(response.paymentRequestUpdate);
                 this.set_selected_shipping_methods(response.shipping_methods);
                 this.payment_data_updated(response, address);
@@ -1455,7 +1556,14 @@
 
         this.$button = $(this.paymentsClient.createButton(this.get_button_options()));
         this.$button.addClass('gpay-button-container');
+        if (this.is_rectangle_button()) {
+            this.$button.find('button').removeClass('new_style');
+        }
     };
+
+    wc_stripe.GooglePay.prototype.is_rectangle_button = function () {
+        return this.params.button_shape === 'rect';
+    }
 
     wc_stripe.GooglePay.prototype.get_button_options = function () {
         var options = {
@@ -1502,6 +1610,9 @@
 
     wc_stripe.ApplePay = function () {
     };
+
+    wc_stripe.ApplePay.prototype.handleActionMethod = 'handleCardAction';
+    wc_stripe.ApplePay.prototype.setupActionMethod = 'confirmCardSetup';
 
     wc_stripe.ApplePay.prototype.initialize = function () {
         this.createPaymentRequest();
@@ -1551,6 +1662,9 @@
     wc_stripe.PaymentRequest = function () {
     };
 
+    wc_stripe.PaymentRequest.prototype.handleActionMethod = 'handleCardAction';
+    wc_stripe.PaymentRequest.prototype.setupActionMethod = 'confirmCardSetup';
+
     wc_stripe.PaymentRequest.prototype.initialize = function () {
         this.createPaymentRequest();
         this.createPaymentRequestButton();
@@ -1581,7 +1695,7 @@
         return new Promise(function (resolve) {
             var paymentRequest = this.paymentRequest;
             this.paymentRequest.canMakePayment().then(function (result) {
-                if (result && !result.applePay && paymentRequest === this.paymentRequest) {
+                if (result && !result.applePay && !result.link && paymentRequest === this.paymentRequest) {
                     this.can_pay = true;
                     this.create_button();
                     $(this.container).show();
@@ -1599,7 +1713,7 @@
     };
 
     wc_stripe.Afterpay.prototype.is_eligible = function (price) {
-        return this.needs_shipping() && (price > this.get_min() && price < this.get_max());
+        return (price >= this.get_min() && price <= this.get_max());
     }
 
     wc_stripe.Afterpay.prototype.get_min = function () {
@@ -1647,7 +1761,8 @@
 
         if ('checkout' === page || ('cart' === page && $(document.body).is('.woocommerce-checkout')) || $('form.woocommerce-checkout').length > 0) {
             $(document.body).on('updated_checkout', this.updated_checkout.bind(this));
-            $('form.checkout').on('change', '.input-text, select', this.onChange.bind(this));
+            $(document.body).on('change', '[name^="billing_"], [name^="shipping_"]', this.onChange.bind(this));
+            $('form.checkout').on('change', '.input-text:not([name^="billing_"], [name^="shipping_"], [name="account_password"]), select:not([name^="billing_"], [name^="shipping_"])', this.onChange.bind(this));
             $('form.checkout').on('change', '[name="ship_to_different_address"]', this.on_ship_to_address_change.bind(this));
             this.init_i18n();
             if ($('[name="ship_to_different_address"]').is(':checked')) {
@@ -1767,7 +1882,7 @@
     wc_stripe.CheckoutFields.prototype.required = function (k) {
         if (this.params[k]) {
             if (typeof this.params[k].required !== 'undefined') {
-                return this.params[k].required;
+                return !!this.params[k].required;
             }
         }
 
@@ -2090,16 +2205,11 @@
     }
 
     try {
-        stripe = Stripe(wc_stripe_params_v3.api_key, (function () {
-            if (wc_stripe_params_v3.mode === 'test' && wc_stripe_params_v3.account === '') {
-                return {};
-            }
-            return {stripeAccount: wc_stripe_params_v3.account};
-        }()));
+        stripe = Stripe(wc_stripe_params_v3.api_key, wc_stripe_params_v3.stripeParams);
+        wc_stripe.stripe = stripe;
     } catch (error) {
-        window.alert(error);
+        //window.alert(error);
         console.log(error);
-        return;
     }
 
     var checkoutFields = new wc_stripe.CheckoutFields(wc_stripe_checkout_fields, wc_stripe_params_v3.page);

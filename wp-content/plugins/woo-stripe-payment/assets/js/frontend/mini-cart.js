@@ -17,11 +17,20 @@
     }
 
     MiniCart.prototype.block_cart = function () {
-        $(this.container).closest('.widget_shopping_cart_content').find('.wc-stripe-overlay').addClass('active');
+        $(this.container).find('.wc-stripe-minicart-overlay').addClass('active');
     }
 
     MiniCart.prototype.unblock_cart = function () {
-        $(this.container).closest('.widget_shopping_cart_content').find('.wc-stripe-overlay').removeClass('active');
+        $(this.container).find('.wc-stripe-minicart-overlay').removeClass('active');
+    }
+
+    MiniCart.prototype.get_gateway_data = function () {
+        var key = ".woocommerce_" + this.gateway_id + "_gateway_data";
+        var data = $('.woocommerce-mini-cart__buttons').find(key).data('gateway');
+        if (!data) {
+            data = $(key).data('gateway');
+        }
+        return !!data ? data : {};
     }
 
     /*------------------------- GPay -------------------------*/
@@ -34,7 +43,6 @@
     GPay.prototype.initialize = function () {
         this.createPaymentsClient();
         this.isReadyToPay().then(function () {
-            this.$button.find('.gpay-button').addClass('button');
             this.append_button();
         }.bind(this));
     }
@@ -146,14 +154,17 @@
     }
 
     function load_mini_cart() {
-        $('.widget_shopping_cart_content').each(function (idx, el) {
+        $('.woocommerce-mini-cart__buttons').each(function (idx, el) {
             if ($(el).find('.wc_stripe_mini_cart_payment_methods').length) {
                 var $parent = $(el).parent();
                 if ($parent.length) {
                     var class_name = 'wc-stripe-mini-cart-idx-' + idx;
                     $parent.addClass(class_name);
-                    $parent.find('.widget_shopping_cart_content').prepend('<div class="wc-stripe-overlay"></div>');
-                    container = '.' + class_name + ' .widget_shopping_cart_content p.woocommerce-mini-cart__buttons';
+                    if(!$parent.find('.wc-stripe-minicart-overlay').length){
+                        $parent.prepend('<div class="wc-stripe-minicart-overlay"></div>');
+                    }
+
+                    container = '.' + class_name + ' .woocommerce-mini-cart__buttons';
                     gateways.forEach(function (gateway) {
                         new gateway[0](gateway[1]);
                     })
@@ -162,6 +173,10 @@
         });
     }
 
-    $(document.body).on('wc_fragments_refreshed wc_fragments_loaded', load_mini_cart);
+    $(document.body).on('wc_fragments_refreshed wc_fragments_loaded', function () {
+        setTimeout(load_mini_cart, 250);
+    });
+
+    setTimeout(load_mini_cart, 500);
 
 }(jQuery, window.wc_stripe));

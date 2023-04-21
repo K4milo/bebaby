@@ -4,8 +4,8 @@ defined( 'ABSPATH' ) || exit();
 
 /**
  *
- * @since 3.1.0
- * @author PaymentPlugins
+ * @since   3.1.0
+ * @author  PaymentPlugins
  * @package Stripe/Abstract
  *
  */
@@ -163,12 +163,16 @@ abstract class WC_Stripe_Payment {
 			if ( ! is_wp_error( $result ) ) {
 				WC_Stripe_Utils::add_balance_transaction_to_order( $result->charge, $order, true );
 
+				/**
+				 * @since 3.3.35
+				 */
+				do_action( 'wc_stripe_process_refund_success', $order );
+
 				return true;
 			}
 
 			return $result;
-		}
-		catch ( Exception $e ) {
+		} catch ( Exception $e ) {
 			return new WP_Error( 'refund-error', $e->getMessage() );
 		}
 	}
@@ -188,6 +192,7 @@ abstract class WC_Stripe_Payment {
 			$order->update_status( apply_filters( 'wc_stripe_authorized_order_status', 'default' === $order_status ? 'on-hold' : $order_status, $order, $payment_method ) );
 		}
 		WC()->cart->empty_cart();
+		$this->destroy_session_data();
 
 		return array(
 			'result'   => 'success',
@@ -226,7 +231,7 @@ abstract class WC_Stripe_Payment {
 	 * @param WC_Order $order
 	 */
 	public function add_order_metadata( &$args, $order ) {
-		$meta_data = array(
+		$meta_data  = array(
 			'gateway_id' => $order->get_payment_method(),
 			'order_id'   => $order->get_id(),
 			'user_id'    => $order->get_user_id(),
@@ -235,6 +240,10 @@ abstract class WC_Stripe_Payment {
 			'partner'    => 'PaymentPlugins',
 			'created'    => time()
 		);
+		$webhook_id = stripe_wc()->api_settings->get_option( 'webhook_id_' . wc_stripe_mode() );
+		if ( $webhook_id ) {
+			$meta_data['webhook_id'] = $webhook_id;
+		}
 		if ( has_action( 'woocommerce_order_number' ) ) {
 			$meta_data['order_number'] = $order->get_order_number();
 		}
@@ -350,6 +359,16 @@ abstract class WC_Stripe_Payment {
 	 */
 	public function set_payment_method( $payment_method ) {
 		$this->payment_method = $payment_method;
+	}
+
+	/**
+	 * @since 3.3.20
+	 */
+	protected function get_payment_method_charge_type() {
+		return $this->payment_method->get_option( 'charge_type' ) === 'capture' ? WC_Stripe_Constants::AUTOMATIC : WC_Stripe_Constants::MANUAL;
+	}
+
+	public function destroy_session_data() {
 	}
 
 }

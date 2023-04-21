@@ -5,4 +5,4 @@
  * @var WC_Payment_Gateway_Stripe $gateway
  */
 ?>
-<a class="wc-stripe-applepay-mini-cart button" style="display: none"></a>
+<a class="wc-stripe-applepay-mini-cart" style="display: none"></a>

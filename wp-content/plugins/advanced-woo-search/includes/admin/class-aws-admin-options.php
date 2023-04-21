@@ -30,6 +30,10 @@ if ( ! class_exists( 'AWS_Admin_Options' ) ) :
                         continue;
                     }
 
+                    if ( isset( $values['type'] ) && $values['type'] === 'html' ) {
+                        continue;
+                    }
+
                     if ( isset( $values['type'] ) && $values['type'] === 'table' && empty( $values['value'] ) ) {
                         continue;
                     }
@@ -80,7 +84,7 @@ if ( ! class_exists( 'AWS_Admin_Options' ) ) :
 
             foreach ( $options[$current_tab] as $values ) {
 
-                if ( $values['type'] === 'heading' || $values['type'] === 'table' ) {
+                if ( $values['type'] === 'heading' || $values['type'] === 'table' || $values['type'] === 'html' ) {
                     continue;
                 }
 
@@ -441,6 +445,19 @@ if ( ! class_exists( 'AWS_Admin_Options' ) ) :
                 )
             );
 
+            $options['performance'][] = array(
+                "name"  => __( "Run shortcodes", "advanced-woo-search" ),
+                "desc"  => __( "Execute or not any shortcodes inside product content.", "advanced-woo-search" ),
+                "id"    => "index_shortcodes",
+                "value" => 'true',
+                "inherit" => "true",
+                "type"  => "radio",
+                'choices' => array(
+                    'true'  => __( 'On', 'advanced-woo-search' ),
+                    'false'  => __( 'Off', 'advanced-woo-search' ),
+                )
+            );
+
             // Search Form Settings
             $options['form'][] = array(
                 "name"  => __( "Text for search field", "advanced-woo-search" ),
@@ -582,9 +599,17 @@ if ( ! class_exists( 'AWS_Admin_Options' ) ) :
             );
 
             $options['results'][] = array(
-                "name"  => __( "Max number of results", "advanced-woo-search" ),
-                "desc"  => __( "Maximum number of displayed search results.", "advanced-woo-search" ),
+                "name"  => __( "Products number", "advanced-woo-search" ),
+                "desc"  => __( "Maximum number of displayed products search results.", "advanced-woo-search" ),
                 "id"    => "results_num",
+                "value" => 10,
+                "type"  => "number"
+            );
+
+            $options['results'][] = array(
+                "name"  => __( "Archive pages number", "advanced-woo-search" ),
+                "desc"  => __( "Maximum number of displayed archive pages search results.", "advanced-woo-search" ),
+                "id"    => "pages_results_num",
                 "value" => 10,
                 "type"  => "number"
             );

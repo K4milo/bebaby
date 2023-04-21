@@ -87,6 +87,12 @@ if ( ! class_exists( 'AWS_Order' ) ) :
 
             }
 
+            if ( empty( $attr_filter ) && class_exists('WC_Query') && method_exists( 'WC_Query', 'get_layered_nav_chosen_attributes' ) && count( WC_Query::get_layered_nav_chosen_attributes() ) > 0  ) {
+                foreach ( WC_Query::get_layered_nav_chosen_attributes() as $taxonomy => $data ) {
+                    $attr_filter[$taxonomy] = $data;
+                }
+            }
+
 
             /**
              * Filter available search page filters before apply
@@ -219,7 +225,7 @@ if ( ! class_exists( 'AWS_Order' ) ) :
 
                                         if ( ! is_wp_error( $product_terms ) && ! empty( $product_terms ) ) {
                                             foreach ( $product_terms as $product_term ) {
-                                                $product_terms_array[] = $product_term->slug;
+                                                $product_terms_array[] = ! empty( $attr_filter[$attr_name]['terms'] ) && preg_match( '/[a-z]/', $attr_filter[$attr_name]['terms'][0] ) ? $product_term->slug : $product_term->term_id;
                                             }
                                         }
 
@@ -233,7 +239,7 @@ if ( ! class_exists( 'AWS_Order' ) ) :
 
                             foreach( $attr_filter as $attr_filter_name => $attr_filter_object ) {
 
-                                $operator = isset( $attr_filter_object['operator'] ) ? $attr_filter_object['operator'] : 'OR';
+                                $operator = isset( $attr_filter_object['operator'] ) ? $attr_filter_object['operator'] : ( isset( $attr_filter_object['query_type'] ) ? $attr_filter_object['query_type'] : 'OR' ) ;
                                 $attr_filter_terms = $attr_filter_object['terms'];
 
                                 $skip = AWS_Helpers::page_filter_tax( $product_terms_array, $attr_filter_terms, $operator );
@@ -284,7 +290,11 @@ if ( ! class_exists( 'AWS_Order' ) ) :
                     $order_by = 'price';
                 }
 
-                if ( isset( $query->query_vars['order'] ) ) {
+                if ( is_array( $order_by ) ) {
+                    $order_by = isset( $order_by[0] ) ? $order_by[0] : '';
+                }
+
+                if ( $order_by && isset( $query->query_vars['order'] ) ) {
                     $order_by = $order_by . '-' . strtolower( $query->query_vars['order'] );
                 }
 

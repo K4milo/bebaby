@@ -15,3 +15,7 @@ import './alipay'
 import './afterpay';
 import './boleto';
 import './oxxo';
+import './affirm';
+import './blik';
+import './konbini';
+import './paynow';

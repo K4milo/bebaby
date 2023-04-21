@@ -1,4 +1,5 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
@@ -8,15 +9,16 @@ if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
 /**
  *
  * @package Stripe/Gateways
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  *
  */
 class WC_Payment_Gateway_Stripe_Bancontact extends WC_Payment_Gateway_Stripe_Local_Payment {
 
-	use WC_Stripe_Local_Payment_Charge_Trait;
+	use WC_Stripe_Local_Payment_Intent_Trait;
+
+	protected $payment_method_type = 'bancontact';
 
 	public function __construct() {
-		$this->synchronous        = false;
 		$this->local_payment_type = 'bancontact';
 		$this->currencies         = array( 'EUR' );
 		$this->countries          = array( 'BE' );
@@ -27,4 +29,5 @@ class WC_Payment_Gateway_Stripe_Bancontact extends WC_Payment_Gateway_Stripe_Loc
 		$this->icon               = stripe_wc()->assets_url( 'img/bancontact.svg' );
 		parent::__construct();
 	}
+
 }

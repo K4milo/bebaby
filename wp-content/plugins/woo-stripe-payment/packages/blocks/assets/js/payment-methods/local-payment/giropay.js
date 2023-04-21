@@ -1,6 +1,6 @@
 import {registerPaymentMethod} from '@woocommerce/blocks-registry';
 import {getSettings} from "../util";
-import {LocalPaymentSourceContent} from './local-payment-method';
+import {LocalPaymentIntentContent} from './local-payment-method';
 import {PaymentMethodLabel, PaymentMethod} from "../../components/checkout";
 import {canMakePayment} from "./local-payment-method";
 
@@ -16,8 +16,11 @@ if (getData()) {
         ariaLabel: 'Giropay',
         placeOrderButtonLabel: getData('placeOrderButtonLabel'),
         canMakePayment: canMakePayment(getData),
-        content: <PaymentMethod content={LocalPaymentSourceContent} getData={getData}/>,
-        edit: <PaymentMethod content={LocalPaymentSourceContent} getData={getData}/>,
+        content: <PaymentMethod
+            content={LocalPaymentIntentContent}
+            confirmationMethod={'confirmGiropayPayment'}
+            getData={getData}/>,
+        edit: <PaymentMethod content={LocalPaymentIntentContent} getData={getData}/>,
         supports: {
             showSavedCards: false,
             showSaveOption: false,

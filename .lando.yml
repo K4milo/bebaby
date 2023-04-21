@@ -1,0 +1,8 @@
+name: luxury-app
+recipe: wordpress
+config:
+  webroot: .
+services:
+    appserver:
+      php:
+        client_max_body_size: "10000m"

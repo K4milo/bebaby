@@ -14,6 +14,8 @@ use WC_Payments_Token_Service;
  */
 class CC_Payment_Method extends UPE_Payment_Method {
 
+	const PAYMENT_METHOD_STRIPE_ID = 'card';
+
 	/**
 	 * Constructor for card payment method
 	 *
@@ -21,10 +23,11 @@ class CC_Payment_Method extends UPE_Payment_Method {
 	 */
 	public function __construct( $token_service ) {
 		parent::__construct( $token_service );
-		$this->stripe_id   = 'card';
+		$this->stripe_id   = self::PAYMENT_METHOD_STRIPE_ID;
 		$this->title       = __( 'Credit card / debit card', 'woocommerce-payments' );
 		$this->is_reusable = true;
 		$this->currencies  = [];// All currencies are supported.
+		$this->icon_url    = plugins_url( 'assets/images/payment-methods/cc.svg', WCPAY_PLUGIN_FILE );
 	}
 
 	/**
@@ -55,6 +58,15 @@ class CC_Payment_Method extends UPE_Payment_Method {
 		);
 
 		return $payment_method_title;
+	}
+
+	/**
+	 * Returns testing credentials to be printed at checkout in test mode.
+	 *
+	 * @return string
+	 */
+	public function get_testing_instructions() {
+		return __( '<strong>Test mode:</strong> use the test VISA card 4242424242424242 with any expiry date and CVC. Other payment methods may redirect to a Stripe test page to authorize payment. More test card numbers are listed <a>here</a>.', 'woocommerce-payments' );
 	}
 
 }

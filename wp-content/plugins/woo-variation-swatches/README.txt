@@ -1,12 +1,12 @@
 === Variation Swatches for WooCommerce ===
 Contributors: EmranAhmed, getwooplugins
 Tags: woocommerce variation swatches, woocommerce variation, woocommerce, variation swatches, woocommerce attributes, product attributes, product color, product size, variable product attributes, variation product swatches, color variation swatch, image variation swatch, printful color swatches
-Requires PHP: 5.6
-Requires at least: 4.8
-WC requires at least: 4.5
-Tested up to: 5.8
-WC tested up to: 5.6
-Stable tag: trunk
+Requires PHP: 7.0
+Requires at least: 5.6
+Tested up to: 6.2
+WC requires at least: 5.6
+WC tested up to: 7.5
+Stable tag: 2.0.20
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -188,6 +188,8 @@ There are many other useful plugins that serve different purposes, and many user
 
 [youtube https://www.youtube.com/watch?v=1IhEZiGzJHs]
 
+Besides adding swatches on the product page, you can show [WooCommerce variation swatches on shop page](https://getwooplugins.com/plugins/woocommerce-variation-swatches/)
+
 👉 Auto Convert All Dropdowns to Image Swatch If Variation Has a Featured Image Set
 
 If you have already set featured images for variations, then it will automatically convert all dropdowns to image swatch. That means you don’t need the hassle to do it manually which in return will save your valuable time. 
@@ -352,6 +354,14 @@ The Variation Swatches for WooCommerce plugin converts filter products by attrib
 
  [Live Demo & Documentation](http://bit.ly/filter-widget-link-doc)
 <hr />
+
+👉 Create Categoried & Grouped Variation Swatches
+
+Users may feel confused to select desired variation swatches among many options. Category and Group swatches feature makes it easy to select the right product variation with ease.
+
+ [Live Demo & Documentation](https://getwooplugins.com/documentation/woocommerce-variation-swatches/#category-group-swatches)
+<hr />
+
 👉 Compatible with Printful, Alidrop, and Multivendor Plugins
 
 This Variation Swatches plugin is compatible with major themes and most popular plugins for WooCommerce. On top of that, it is also compatible with printful, alidrop and multi-vendor plugins.
@@ -384,7 +394,7 @@ Clear button allows you to clear the selected attribute variation. The Woocommer
 👉 Customize swatches colors, background and border sizes
 👉 Automatic updates
 
-Keeping your plugin updated is crucial for security and stability of your site. We update this plugin regularly. You can enable auto update for this swatch plugin directly from your WordPress dashboard.
+Keeping your plugin updated is crucial for security and stability of your site. We try to update our [variation swatches for woocommerce pro](https://wordpress.org/support/topic/the-best-support-ever-thank-you-guys/) plugin regularly. You can enable auto update for this swatch plugin directly from your WordPress dashboard.
 
 👉 Exclusive technical support
 
@@ -481,9 +491,7 @@ We provide exclusive technical support to our customers. Our plugin has plenty o
 <ul>
 <li><a target="_blank" href="https://wordpress.org/plugins/woo-cart-redirect-to-checkout-page">Add to Cart Redirect for WooCommerce</a></li>
 </ul>
-<ul>
-<li><a target="_blank" href="https://wordpress.org/plugins/woo-2checkout">Payment Gateway – 2Checkout for WooCommerce</a></li>
-</ul>
+
 </blockquote>
 
 
@@ -507,11 +515,24 @@ We provide exclusive technical support to our customers. Our plugin has plenty o
 </ul>
 </blockquote>
 
+= Featured on Popular Blog Sites =
+
+<blockquote>
+
+<ul>
+<li><a target="_blank" href="https://wpcred.com">wpcred.com</a></li>
+</ul>
+<ul>
+<li><a target="_blank" href="https://storepress.com">storepress.com</a></li>
+</ul>
+
+</blockquote>
+
 == Installation ==
 
 ### Automatic Install From WordPress Dashboard
 
-1. Login to your the admin panel
+1. Login to your admin panel
 2. Navigate to Plugins -> Add New
 3. Search **Variation Swatches for WooCommerce**
 4. Click install and activate respectively.
@@ -592,6 +613,111 @@ And your are ready to go.
 12. Global Variation Color Swatches Attribute List Preview
 
 == Changelog ==
+
+= 2.0.20 - 13-04-2023 =
+
+* Fix: Product children check issue
+* Update: WP 6.2 Compatibility
+
+= 2.0.19 - 16-03-2023 =
+
+* Add: High-Performance order storage (COT) feature compatibility.
+* Fix: Variation cache cleaning issue.
+* Update: WC 7.5 Compatibility
+
+= 2.0.18 - 18-01-2023 =
+
+* Update: caching function
+* Update: WC 7.3 Compatibility
+
+= 2.0.17 - 06-01-2023 =
+
+* Add: show product variation image if image type attribute have no image selected
+* Fix: clearing transient after attribute update
+
+= 2.0.16 - 13-12-2022 =
+
+* Fix: litespeed-cache plugin trigger error to use WP_Object_Cache::flush_group method
+
+= 2.0.15 - 12-12-2022 =
+
+* Fix: Object cache issue
+
+= 2.0.14 - 06-12-2022 =
+
+* Fix: Variation delete error
+
+= 2.0.13 - 17-11-2022 =
+
+* Update: Performance Improvement
+
+= 2.0.12 - 31-10-2022 =
+
+* Update: Update Migration Script
+* Update: Modify `woo_variation_swatches_variable_item_custom_attributes` filter
+
+= 2.0.11 - 28-09-2022 =
+
+* Update: WooCommerce Support
+
+= 2.0.10 - 15-09-2022 =
+
+* Update: WooCommerce Support
+* Update: JS Scripts
+* Fix: WPML Option issue
+
+= 2.0.9 - 28-08-2022 =
+
+* Update: Translation String
+* Update: Settings Script and RTL
+
+= 2.0.8 - 17-08-2022 =
+
+* Fix: Caching header issue
+
+= 2.0.7 - 11-08-2022 =
+
+* Update: Woocommerce 6.8 support
+* Add: Caching header for ajax response
+
+= 2.0.6 - 31-07-2022 =
+
+* Fix: dependency script updated for product page settings save issue
+* Update: `is_admin()` check removed for some theme support
+
+= 2.0.5 - 20-07-2022 =
+
+* Add: `woo_variation_swatches_html` filter to modify swatches output
+* Add: `woo_variation_swatches_nav_widget_html` filter to modify widget output
+* Update: `[wvs_show_archive_variation]` shortcode updated, now `product_id` can be added like: `[wvs_show_archive_variation product_id="ID"]`.
+* Update: `data-dependency` attribute to `data-gwp_dependency` for possible conflict.
+* Update: translation string.
+
+= 2.0.4 - 08-07-2022 =
+
+* Fix: Composite Product Selecting Issue
+* Add: Option to change tick and cross icon color
+* Add: Option to enable/disable preloader
+
+= 2.0.3 - 26-06-2022 =
+
+* Fix: Out of Stock info
+
+= 2.0.2 - 23-06-2022 =
+
+* Add: Image type fallback if no attribute image added.
+* Fix: Archive add to cart issue
+* Add: Ajax Quick View / Load More support
+
+= 2.0.1 - 16-06-2022 =
+
+* Add: Hex to RGBA color conversion on migration
+* Fix: Disable attribute hide css issue.
+* Fix: variation selected css issue.
+
+= 2.0.0 - 13-06-2022 =
+
+* Update: plugin structure change and add more features.
 
 = 1.1.19 - 07-09-2021 =
 
@@ -1093,3 +1219,6 @@ And your are ready to go.
 * Initial release
 
 == Upgrade Notice ==
+
+= 2.0 =
+If you are using PRO version of this plugin please disable it first. This version has a lot of update.

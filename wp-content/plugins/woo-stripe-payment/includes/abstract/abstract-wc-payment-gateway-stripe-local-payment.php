@@ -10,7 +10,7 @@ if ( ! class_exists( 'WC_Payment_Gateway_Stripe' ) ) {
  * Local payment method classes should extend this abstract class
  *
  * @package Stripe/Abstract
- * @author Payment Plugins
+ * @author  Payment Plugins
  *
  */
 abstract class WC_Payment_Gateway_Stripe_Local_Payment extends WC_Payment_Gateway_Stripe {
@@ -36,12 +36,15 @@ abstract class WC_Payment_Gateway_Stripe_Local_Payment extends WC_Payment_Gatewa
 
 	protected $local_payment_description = '';
 
+	public $token_type = 'Stripe_Local';
+
 	public function __construct() {
-		$this->token_type    = 'Stripe_Local';
 		$this->template_name = 'local-payment.php';
 		parent::__construct();
-		$this->settings['method_format'] = 'gateway_title';
 
+		if ( ! isset( $this->form_fields['method_format'] ) ) {
+			$this->settings['method_format'] = 'gateway_title';
+		}
 		if ( ! isset( $this->form_fields['charge_type'] ) ) {
 			$this->settings['charge_type'] = 'capture';
 		}
@@ -84,20 +87,6 @@ abstract class WC_Payment_Gateway_Stripe_Local_Payment extends WC_Payment_Gatewa
 
 	public function init_supports() {
 		$this->supports = array( 'tokenization', 'products', 'refunds' );
-	}
-
-	public function process_payment( $order_id ) {
-		$result = parent::process_payment( $order_id );
-
-		if ( defined( WC_Stripe_Constants::WOOCOMMERCE_STRIPE_ORDER_PAY ) && $result['result'] == 'success' ) {
-			wp_send_json( array(
-				'success'  => true,
-				'redirect' => $result['redirect']
-			), 200 );
-			exit();
-		}
-
-		return $result;
 	}
 
 	/**
@@ -201,7 +190,6 @@ abstract class WC_Payment_Gateway_Stripe_Local_Payment extends WC_Payment_Gatewa
 				),
 				'element_params'     => $this->get_element_params(),
 				'routes'             => array(
-					'order_pay'           => stripe_wc()->rest_api->checkout->rest_url( 'order-pay' ),
 					'delete_order_source' => WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->checkout->rest_uri( 'order/source' ) ),
 					'update_source'       => WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->source->rest_uri( 'update' ) )
 				)
@@ -327,7 +315,7 @@ abstract class WC_Payment_Gateway_Stripe_Local_Payment extends WC_Payment_Gatewa
 		} else {
 			$currency        = get_woocommerce_currency();
 			$customer        = WC()->customer;
-			$billing_country = $customer ? $customer->get_billing_country() : NULL;
+			$billing_country = $customer ? $customer->get_billing_country() : null;
 			$total           = WC()->cart ? WC()->cart->total : 0;
 			if ( ! $billing_country ) {
 				$billing_country = WC()->countries->get_base_country();
@@ -340,7 +328,7 @@ abstract class WC_Payment_Gateway_Stripe_Local_Payment extends WC_Payment_Gatewa
 			} elseif ( 'specific' === $type ) {
 				$_available = in_array( $billing_country, $this->get_option( 'specific_countries', array() ) );
 			} else {
-				$_available = $this->limited_countries ? in_array( $billing_country, $this->limited_countries ) : true;
+				$_available = ! $this->limited_countries || in_array( $billing_country, $this->limited_countries );
 			}
 		}
 		if ( $_available && method_exists( $this, 'validate_local_payment_available' ) ) {

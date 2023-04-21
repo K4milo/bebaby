@@ -1,8 +1,8 @@
 import {registerPaymentMethod} from '@woocommerce/blocks-registry';
 import {getSettings} from "../util";
-import {LocalPaymentSourceContent} from './local-payment-method';
+import {canMakePayment, LocalPaymentIntentContent} from './local-payment-method';
 import {PaymentMethodLabel, PaymentMethod} from "../../components/checkout";
-import {canMakePayment} from "./local-payment-method";
+import {EpsBankElement} from "@stripe/react-stripe-js";
 
 const getData = getSettings('stripe_eps_data');
 
@@ -16,8 +16,12 @@ if (getData()) {
         ariaLabel: 'EPS',
         placeOrderButtonLabel: getData('placeOrderButtonLabel'),
         canMakePayment: canMakePayment(getData),
-        content: <PaymentMethod content={LocalPaymentSourceContent} getData={getData}/>,
-        edit: <PaymentMethod content={LocalPaymentSourceContent} getData={getData}/>,
+        content: <PaymentMethod
+            content={LocalPaymentIntentContent}
+            confirmationMethod={'confirmEpsPayment'}
+            component={EpsBankElement}
+            getData={getData}/>,
+        edit: <PaymentMethod content={LocalPaymentIntentContent} getData={getData}/>,
         supports: {
             showSavedCards: false,
             showSaveOption: false,

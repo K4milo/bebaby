@@ -1,4 +1,5 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 if ( ! class_exists( 'WC_Stripe_Rest_Controller' ) ) {
@@ -7,7 +8,7 @@ if ( ! class_exists( 'WC_Stripe_Rest_Controller' ) ) {
 
 /**
  *
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  * @package Stripe/Controllers
  */
 class WC_Stripe_Controller_GooglePay extends WC_Stripe_Rest_Controller {
@@ -67,13 +68,13 @@ class WC_Stripe_Controller_GooglePay extends WC_Stripe_Rest_Controller {
 		$this->add_ready_to_calc_shipping();
 
 		try {
-
 			wc_stripe_update_customer_location( $address );
 
 			wc_stripe_update_shipping_methods( $this->get_shipping_method_from_request( $request ) );
 
 			if ( 'product' == $request->get_param( 'page_id' ) ) {
-				wc_stripe_stash_cart( WC()->cart );
+				$this->empty_cart( WC()->cart );
+				WC()->cart->add_to_cart( ...array_values( $this->get_add_to_cart_args( $request ) ) );
 			}
 
 			// update the WC cart with the new shipping options
@@ -97,9 +98,6 @@ class WC_Stripe_Controller_GooglePay extends WC_Stripe_Rest_Controller {
 					)
 				)
 			);
-			if ( 'product' == $request->get_param( 'page_id' ) ) {
-				wc_stripe_restore_cart( WC()->cart );
-			}
 
 			return $response;
 		} catch ( Exception $e ) {
@@ -168,4 +166,5 @@ class WC_Stripe_Controller_GooglePay extends WC_Stripe_Rest_Controller {
 
 		return $this->shipping_method_id;
 	}
+
 }

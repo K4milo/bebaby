@@ -1,13 +1,20 @@
 <?php
-$args = array(
+
+/**
+ * @file
+ * Category loop of parent terms.
+ */
+
+$args = [
   'taxonomy' => 'product_cat',
-  'hide_empty' => false,
-  'exclude' => array(15),
-);
+  'hide_empty' => FALSE,
+  'exclude' => [15],
+  'parent' => 0,
+];
 
 $categories = get_terms($args);
 
-if ($categories): ?>
+if ($categories) : ?>
 <section class="category-cards">
   <div class="container">
     <header class="category-cards__heading">
@@ -15,13 +22,13 @@ if ($categories): ?>
     </header>
     <div class="row">
     <?php
-      foreach($categories as $category):
-        $cat_id = $category->term_id;
-        $cat_name = $category->name;
-        $cat_slug = $category->slug;
-        $cat_description = $category->description;
-        $thumbnail_id = get_term_meta($cat_id, 'thumbnail_id', true);
-        $cat_image = wp_get_attachment_url($thumbnail_id); ?>
+    foreach ($categories as $category) :
+      $cat_id = $category->term_id;
+      $cat_name = $category->name;
+      $cat_slug = $category->slug;
+      $cat_description = $category->description;
+      $thumbnail_id = get_term_meta($cat_id, 'thumbnail_id', TRUE);
+      $cat_image = wp_get_attachment_url($thumbnail_id); ?>
       <div class="col-lg-4 col-md-6 mb-3">
         <article class="card-category">
           <a href="/product-category/<?php echo $cat_slug; ?>">
@@ -35,10 +42,10 @@ if ($categories): ?>
         </article>
       </div>
       <?php
-      endforeach;
+    endforeach;
     ?>
     </div>
   </div>
 </section>
-<?php
+  <?php
 endif;

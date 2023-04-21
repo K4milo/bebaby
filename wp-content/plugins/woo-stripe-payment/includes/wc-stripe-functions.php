@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit();
  * @param string $template_name
  * @param array  $args
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  *          Wrapper for wc_get_template that returns Stripe specfic templates.
  */
@@ -23,7 +23,7 @@ function wc_stripe_get_template( $template_name, $args = array() ) {
  * @param string $template_name
  * @param array  $args
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return string
  * @package Stripe/Functions
  */
@@ -83,13 +83,17 @@ function wc_stripe_mode() {
 	return apply_filters( 'wc_stripe_mode', stripe_wc()->api_settings->get_option( 'mode' ) );
 }
 
+function wc_stripe_test_mode() {
+	return wc_stripe_mode() === 'test';
+}
+
 /**
  * Return the secret key for the provided mode.
  * If no mode given, the key for the active mode is returned.
  *
  * @param string $mode
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_get_secret_key( $mode = '' ) {
@@ -104,7 +108,7 @@ function wc_stripe_get_secret_key( $mode = '' ) {
  *
  * @param string $mode
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_get_publishable_key( $mode = '' ) {
@@ -116,12 +120,12 @@ function wc_stripe_get_publishable_key( $mode = '' ) {
 /**
  * Return the merchant's Stripe account.
  *
- * @since 3.1.4
+ * @since   3.1.4
  * @return string
  * @package Stripe/Functions
  */
 function wc_stripe_get_account_id() {
-	return apply_filters( 'wc_stripe_get_account_id', stripe_wc()->api_settings->get_option( 'account_id' ) );
+	return apply_filters( 'wc_stripe_get_account_id', stripe_wc()->api_settings->get_account_id() );
 }
 
 /**
@@ -130,7 +134,7 @@ function wc_stripe_get_account_id() {
  * @param int    $user_id
  * @param string $mode
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_get_customer_id( $user_id = '', $mode = '' ) {
@@ -183,14 +187,19 @@ function wc_stripe_delete_customer( $user_id, $mode = '', $global = false ) {
  * @param int              $token_id
  * @param WC_Payment_Token $token
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_woocommerce_payment_token_deleted( $token_id, $token ) {
 	if ( ! did_action( 'woocommerce_payment_gateways' ) ) {
 		WC_Payment_Gateways::instance();
 	}
-	do_action( 'wc_stripe_payment_token_deleted_' . $token->get_gateway_id(), $token_id, $token );
+	/**
+	 * @since 3.3.22 - only trigger this action if the delete request is coming from the my account page.
+	 */
+	if ( is_account_page() ) {
+		do_action( 'wc_stripe_payment_token_deleted_' . $token->get_gateway_id(), $token_id, $token );
+	}
 }
 
 /**
@@ -199,7 +208,7 @@ function wc_stripe_woocommerce_payment_token_deleted( $token_id, $token ) {
  * @param int    $level
  * @param string $message
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_log( $level, $message ) {
@@ -213,7 +222,7 @@ function wc_stripe_log( $level, $message ) {
  *
  * @param string $message
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_log_error( $message ) {
@@ -224,7 +233,7 @@ function wc_stripe_log_error( $message ) {
  *
  * @param string $message
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_log_info( $message ) {
@@ -237,22 +246,22 @@ function wc_stripe_log_info( $message ) {
  *
  * @param WC_Order|int $order
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_order_mode( $order ) {
-	if ( is_object( $order ) ) {
-		return $order->get_meta( WC_Stripe_Constants::MODE, true );
+	if ( ! is_object( $order ) ) {
+		$order = wc_get_order( $order );
 	}
 
-	return get_post_meta( $order, WC_Stripe_Constants::MODE, true );
+	return $order->get_meta( WC_Stripe_Constants::MODE, true );
 }
 
 /**
  *
  * @param array $gateways
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe\Functions
  */
 function wc_stripe_payment_gateways( $gateways ) {
@@ -287,7 +296,7 @@ function wc_stripe_order_cancelled( $order_id, $order ) {
  * @param int      $order_id
  * @param WC_Order $order
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_order_status_completed( $order_id, $order ) {
@@ -299,15 +308,17 @@ function wc_stripe_order_status_completed( $order_id, $order ) {
 	$gateway = isset( $gateways[ $order->get_payment_method() ] ) ? $gateways[ $order->get_payment_method() ] : null;
 	// @since 3.0.3 check added to ensure this is a Stripe gateway.
 	if ( $gateway && $gateway instanceof WC_Payment_Gateway_Stripe && ! $gateway->processing_payment ) {
-		$gateway->capture_charge( $order->get_total(), $order );
+		if ( stripe_wc()->advanced_settings->get_option( 'capture_status', 'completed' ) === $order->get_status() ) {
+			$gateway->capture_charge( $order->get_total(), $order );
+		}
 	}
 }
 
 /**
  *
- * @param [] $address
+ * @param   [] $address
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @throws Exception
  * @package Stripe/Functions
  */
@@ -349,9 +360,9 @@ function wc_stripe_update_customer_location( $address ) {
 
 /**
  *
- * @param [] $methods
+ * @param   [] $methods
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_update_shipping_methods( $methods ) {
@@ -369,7 +380,7 @@ function wc_stripe_update_shipping_methods( $methods ) {
  *
  * @param array $packages
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return boolean
  * @package Stripe/Functions
  */
@@ -390,7 +401,7 @@ function wc_stripe_shipping_address_serviceable( $packages = array() ) {
  * @param string   $page
  * @param WC_Order $order
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @deprecated
  * @package Stripe/Functions
  */
@@ -405,7 +416,7 @@ function wc_stripe_get_display_items( $page = 'cart', $order = null ) {
  * @param WC_Order $order
  * @param array    $packages
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return mixed
  * @deprecated
  * @package Stripe/Functions
@@ -461,7 +472,7 @@ function wc_stripe_get_shipping_options( $order = null, $packages = array() ) {
 
 /**
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_set_checkout_error() {
@@ -472,7 +483,7 @@ function wc_stripe_set_checkout_error() {
  *
  * @param string $template_name
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_output_checkout_error( $template_name ) {
@@ -485,7 +496,7 @@ function wc_stripe_output_checkout_error( $template_name ) {
 
 /**
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_add_allowed_html( $tags, $context ) {
@@ -534,7 +545,7 @@ function wc_stripe_process_shop_subscription_meta( $post_id, $post ) {
  *
  * @param WC_Payment_Gateway[] $gateways
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_available_payment_gateways( $gateways ) {
@@ -554,7 +565,7 @@ function wc_stripe_available_payment_gateways( $gateways ) {
 
 /**
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return array
  * @package Stripe/Functions
  */
@@ -579,7 +590,7 @@ function wc_stripe_get_local_payment_params() {
  *
  * @param array $gateways
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return WC_Payment_Gateway[]
  * @package Stripe/Functions
  */
@@ -599,7 +610,7 @@ function wc_stripe_get_available_local_gateways( $gateways ) {
  *
  * @param string|int $key
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_set_idempotency_key( $key ) {
@@ -609,7 +620,7 @@ function wc_stripe_set_idempotency_key( $key ) {
 
 /**
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return mixed
  * @package Stripe/Functions
  */
@@ -623,7 +634,7 @@ function wc_stripe_get_idempotency_key() {
  *
  * @param array $options
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return array
  * @package Stripe/Functions
  */
@@ -642,7 +653,7 @@ function wc_stripe_api_options( $options ) {
  * @param int      $order_id
  * @param WC_Order $order
  *
- * @since 3.0.0
+ * @since   3.0.0
  * <br/><strong>3.1.7</strong> - default $order argument of null added to prevent errors when 3rd party plugins trigger
  * action woocommerce_payment_complete_order_status and don't pass three arguments.
  * @package Stripe/Functions
@@ -666,7 +677,7 @@ function wc_stripe_payment_complete_order_status( $order_status, $order_id, $ord
  * @param string $currency
  * @param string $round
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return number
  * @package Stripe/Functions
  */
@@ -716,7 +727,7 @@ function wc_stripe_remove_number_precision( $value, $currency = '', $round = tru
 /**
  * Return an array of credit card forms.
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @return mixed
  * @package Stripe/Functions
  */
@@ -855,7 +866,7 @@ function wc_stripe_get_custom_forms() {
  *
  * @param WC_Order $order
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_order_has_shipping_address( $order ) {
@@ -868,15 +879,15 @@ function wc_stripe_order_has_shipping_address( $order ) {
 
 /**
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Functions
  */
 function wc_stripe_display_prices_including_tax() {
 	$cart = WC()->cart;
-	if ( method_exists( $cart, 'display_prices_including_tax' ) ) {
+	if ( $cart && method_exists( $cart, 'display_prices_including_tax' ) ) {
 		return $cart->display_prices_including_tax();
 	}
-	if ( is_callable( array( $cart, 'get_tax_price_display_mode' ) ) ) {
+	if ( $cart && is_callable( array( $cart, 'get_tax_price_display_mode' ) ) ) {
 		return 'incl' == $cart->get_tax_price_display_mode() && ( WC()->customer && ! WC()->customer->is_vat_exempt() );
 	}
 
@@ -886,7 +897,7 @@ function wc_stripe_display_prices_including_tax() {
 /**
  * Return true if the WC pre-orders plugin is active
  *
- * @since 3.0.1
+ * @since   3.0.1
  * @package Stripe/Functions
  */
 function wc_stripe_pre_orders_active() {
@@ -897,15 +908,31 @@ function wc_stripe_pre_orders_active() {
  *
  * @param string $source_id
  *
- * @since 3.0.5
+ * @since   3.0.5
  * @package Stripe/Functions
  */
 function wc_stripe_get_order_from_source_id( $source_id ) {
-	global $wpdb;
-	$order_id
-		= $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} AS posts LEFT JOIN {$wpdb->postmeta} AS meta ON posts.ID = meta.post_id WHERE meta.meta_key = %s AND meta.meta_value = %s LIMIT 1",
-		WC_Stripe_Constants::SOURCE_ID,
-		$source_id ) );
+	if ( \PaymentPlugins\Stripe\Utilities\FeaturesUtil::is_custom_order_tables_enabled() ) {
+		$order_ids = wc_get_orders( [
+			'type'       => 'shop_order',
+			'limit'      => 1,
+			'return'     => 'ids',
+			'meta_query' => [
+				[
+					'key'   => WC_Stripe_Constants::SOURCE_ID,
+					'value' => $source_id
+				]
+			]
+		] );
+		$order_id  = ! empty( $order_ids ) ? $order_ids[0] : null;
+	} else {
+		global $wpdb;
+		$order_id
+			= $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} AS posts LEFT JOIN {$wpdb->postmeta} AS meta ON posts.ID = meta.post_id WHERE posts.post_type = %s AND meta.meta_key = %s AND meta.meta_value = %s LIMIT 1",
+			'shop_order',
+			WC_Stripe_Constants::SOURCE_ID,
+			$source_id ) );
+	}
 
 	return wc_get_order( $order_id );
 }
@@ -914,16 +941,27 @@ function wc_stripe_get_order_from_source_id( $source_id ) {
  *
  * @param string $transaction_id
  *
- * @since 3.0.5
+ * @since   3.0.5
  * @return WC_Order|WC_Refund|boolean|WC_Order_Refund
  * @package Stripe/Functions
  */
 function wc_stripe_get_order_from_transaction( $transaction_id ) {
-	global $wpdb;
-	$order_id
-		= $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} AS posts LEFT JOIN {$wpdb->postmeta} AS meta ON posts.ID = meta.post_id WHERE meta.meta_key = %s AND meta.meta_value = %s LIMIT 1",
-		'_transaction_id',
-		$transaction_id ) );
+	if ( \PaymentPlugins\Stripe\Utilities\FeaturesUtil::is_custom_order_tables_enabled() ) {
+		$order_ids = wc_get_orders( [
+			'type'           => 'shop_order',
+			'limit'          => 1,
+			'return'         => 'ids',
+			'transaction_id' => $transaction_id
+		] );
+		$order_id  = ! empty( $order_ids ) ? $order_ids[0] : null;
+	} else {
+		global $wpdb;
+		$order_id
+			= $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} AS posts LEFT JOIN {$wpdb->postmeta} AS meta ON posts.ID = meta.post_id WHERE posts.post_type = %s AND meta.meta_key = %s AND meta.meta_value = %s LIMIT 1",
+			'shop_order',
+			'_transaction_id',
+			$transaction_id ) );
+	}
 
 	return wc_get_order( $order_id );
 }
@@ -936,8 +974,8 @@ function wc_stripe_get_order_from_transaction( $transaction_id ) {
  * @param WC_Cart $cart
  * @param bool    $product_cart
  *
- * @since 3.0.6
- * @todo Maybe empty cart silently so actions are not triggered that cause session data to be removed
+ * @since   3.0.6
+ * @todo    Maybe empty cart silently so actions are not triggered that cause session data to be removed
  *       from 3rd party plugins.
  *
  * @package Stripe/Functions
@@ -965,7 +1003,7 @@ function wc_stripe_stash_cart( $cart, $product_cart = true ) {
  * @param WC_Cart $cart
  * @param array   $params
  *
- * @since 3.0.6
+ * @since   3.0.6
  * @package Stripe/Functions
  */
 function wc_stripe_stash_product_cart( $cart, $params = array() ) {
@@ -980,7 +1018,7 @@ function wc_stripe_stash_product_cart( $cart, $params = array() ) {
  *
  * @param WC_Cart $cart
  *
- * @since 3.0.6
+ * @since   3.0.6
  * @package Stripe/Functions
  */
 function wc_stripe_restore_cart( $cart ) {
@@ -991,7 +1029,7 @@ function wc_stripe_restore_cart( $cart ) {
 
 /**
  *
- * @since 3.0.6
+ * @since   3.0.6
  * @package Stripe/Functions
  */
 function wc_stripe_restore_cart_after_product_checkout() {
@@ -1011,7 +1049,7 @@ function wc_stripe_restore_cart_after_product_checkout() {
  * @param int                $user_id
  * @param string             $gateway_id
  *
- * @since 3.1.0
+ * @since   3.1.0
  * @return WC_Payment_Token[]
  * @package Stripe/Functions
  */
@@ -1032,7 +1070,7 @@ function wc_stripe_get_customer_payment_tokens( $tokens, $user_id, $gateway_id )
  *
  * @param array $labels
  *
- * @since 3.1.0
+ * @since   3.1.0
  * @return string
  * @package Stripe/Functions
  */
@@ -1047,87 +1085,92 @@ function wc_stripe_credit_card_labels( $labels ) {
 /**
  * Return an array of Stripe error messages.
  *
- * @since 3.1.1
+ * @since   3.1.1
  * @package Stripe/Functions
  */
 function wc_stripe_get_error_messages() {
 	return apply_filters(
 		'wc_stripe_get_error_messages',
 		array(
-			'stripe_cc_generic'                => __( 'There was an error processing your credit card.', 'woo-stripe-payment' ),
-			'incomplete_number'                => __( 'Your card number is incomplete.', 'woo-stripe-payment' ),
-			'incomplete_expiry'                => __( 'Your card\'s expiration date is incomplete.', 'woo-stripe-payment' ),
-			'incomplete_cvc'                   => __( 'Your card\'s security code is incomplete.', 'woo-stripe-payment' ),
-			'incomplete_zip'                   => __( 'Your card\'s zip code is incomplete.', 'woo-stripe-payment' ),
-			'incorrect_number'                 => __( 'The card number is incorrect. Check the card\'s number or use a different card.', 'woo-stripe-payment' ),
-			'incorrect_cvc'                    => __( 'The card\'s security code is incorrect. Check the card\'s security code or use a different card.', 'woo-stripe-payment' ),
-			'incorrect_zip'                    => __( 'The card\'s ZIP code is incorrect. Check the card\'s ZIP code or use a different card.', 'woo-stripe-payment' ),
-			'invalid_number'                   => __( 'The card number is invalid. Check the card details or use a different card.', 'woo-stripe-payment' ),
-			'invalid_characters'               => __( 'This value provided to the field contains characters that are unsupported by the field.', 'woo-stripe-payment' ),
-			'invalid_cvc'                      => __( 'The card\'s security code is invalid. Check the card\'s security code or use a different card.', 'woo-stripe-payment' ),
-			'invalid_expiry_month'             => __( 'The card\'s expiration month is incorrect. Check the expiration date or use a different card.', 'woo-stripe-payment' ),
-			'invalid_expiry_year'              => __( 'The card\'s expiration year is incorrect. Check the expiration date or use a different card.', 'woo-stripe-payment' ),
-			'invalid_number'                   => __( 'The card number is invalid. Check the card details or use a different card.', 'woo-stripe-payment' ),
-			'incorrect_address'                => __( 'The card\'s address is incorrect. Check the card\'s address or use a different card.', 'woo-stripe-payment' ),
-			'expired_card'                     => __( 'The card has expired. Check the expiration date or use a different card.', 'woo-stripe-payment' ),
-			'card_declined'                    => __( 'The card has been declined.', 'woo-stripe-payment' ),
-			'invalid_expiry_year_past'         => __( 'Your card\'s expiration year is in the past.', 'woo-stripe-payment' ),
-			'account_number_invalid'           => __( 'The bank account number provided is invalid (e.g., missing digits). Bank account information varies from country to country. We recommend creating validations in your entry forms based on the bank account formats we provide.',
+			'stripe_cc_generic'                                   => __( 'There was an error processing your credit card.', 'woo-stripe-payment' ),
+			'incomplete_number'                                   => __( 'Your card number is incomplete.', 'woo-stripe-payment' ),
+			'incomplete_expiry'                                   => __( 'Your card\'s expiration date is incomplete.', 'woo-stripe-payment' ),
+			'incomplete_cvc'                                      => __( 'Your card\'s security code is incomplete.', 'woo-stripe-payment' ),
+			'incomplete_zip'                                      => __( 'Your card\'s zip code is incomplete.', 'woo-stripe-payment' ),
+			'incorrect_number'                                    => __( 'The card number is incorrect. Check the card\'s number or use a different card.', 'woo-stripe-payment' ),
+			'incorrect_cvc'                                       => __( 'The card\'s security code is incorrect. Check the card\'s security code or use a different card.', 'woo-stripe-payment' ),
+			'incorrect_zip'                                       => __( 'The card\'s ZIP code is incorrect. Check the card\'s ZIP code or use a different card.', 'woo-stripe-payment' ),
+			'invalid_number'                                      => __( 'The card number is invalid. Check the card details or use a different card.', 'woo-stripe-payment' ),
+			'invalid_characters'                                  => __( 'This value provided to the field contains characters that are unsupported by the field.', 'woo-stripe-payment' ),
+			'invalid_cvc'                                         => __( 'The card\'s security code is invalid. Check the card\'s security code or use a different card.', 'woo-stripe-payment' ),
+			'invalid_expiry_month'                                => __( 'The card\'s expiration month is incorrect. Check the expiration date or use a different card.', 'woo-stripe-payment' ),
+			'invalid_expiry_year'                                 => __( 'The card\'s expiration year is incorrect. Check the expiration date or use a different card.', 'woo-stripe-payment' ),
+			'invalid_number'                                      => __( 'The card number is invalid. Check the card details or use a different card.', 'woo-stripe-payment' ),
+			'incorrect_address'                                   => __( 'The card\'s address is incorrect. Check the card\'s address or use a different card.', 'woo-stripe-payment' ),
+			'expired_card'                                        => __( 'The card has expired. Check the expiration date or use a different card.', 'woo-stripe-payment' ),
+			'card_declined'                                       => __( 'The card has been declined.', 'woo-stripe-payment' ),
+			'invalid_expiry_year_past'                            => __( 'Your card\'s expiration year is in the past.', 'woo-stripe-payment' ),
+			'account_number_invalid'                              => __( 'The bank account number provided is invalid (e.g., missing digits). Bank account information varies from country to country. We recommend creating validations in your entry forms based on the bank account formats we provide.',
 				'woo-stripe-payment' ),
-			'amount_too_large'                 => __( 'The specified amount is greater than the maximum amount allowed. Use a lower amount and try again.', 'woo-stripe-payment' ),
-			'amount_too_small'                 => __( 'The specified amount is less than the minimum amount allowed. Use a higher amount and try again.', 'woo-stripe-payment' ),
-			'authentication_required'          => __( 'The payment requires authentication to proceed. If your customer is off session, notify your customer to return to your application and complete the payment. If you provided the error_on_requires_action parameter, then your customer should try another card that does not require authentication.',
+			'amount_too_large'                                    => __( 'The specified amount is greater than the maximum amount allowed. Use a lower amount and try again.', 'woo-stripe-payment' ),
+			'amount_too_small'                                    => __( 'The specified amount is less than the minimum amount allowed. Use a higher amount and try again.', 'woo-stripe-payment' ),
+			'authentication_required'                             => __( 'The payment requires authentication to proceed. If your customer is off session, notify your customer to return to your application and complete the payment. If you provided the error_on_requires_action parameter, then your customer should try another card that does not require authentication.',
 				'woo-stripe-payment' ),
-			'balance_insufficient'             => __( 'The transfer or payout could not be completed because the associated account does not have a sufficient balance available. Create a new transfer or payout using an amount less than or equal to the account\'s available balance.',
+			'balance_insufficient'                                => __( 'The transfer or payout could not be completed because the associated account does not have a sufficient balance available. Create a new transfer or payout using an amount less than or equal to the account\'s available balance.',
 				'woo-stripe-payment' ),
-			'bank_account_declined'            => __( 'The bank account provided can not be used to charge, either because it is not verified yet or it is not supported.', 'woo-stripe-payment' ),
-			'bank_account_exists'              => __( 'The bank account provided already exists on the specified Customer object. If the bank account should also be attached to a different customer, include the correct customer ID when making the request again.',
+			'bank_account_declined'                               => __( 'The bank account provided can not be used to charge, either because it is not verified yet or it is not supported.', 'woo-stripe-payment' ),
+			'bank_account_exists'                                 => __( 'The bank account provided already exists on the specified Customer object. If the bank account should also be attached to a different customer, include the correct customer ID when making the request again.',
 				'woo-stripe-payment' ),
-			'bank_account_unusable'            => __( 'The bank account provided cannot be used for payouts. A different bank account must be used.', 'woo-stripe-payment' ),
-			'bank_account_unverified'          => __( 'Your Connect platform is attempting to share an unverified bank account with a connected account.', 'woo-stripe-payment' ),
-			'bank_account_verification_failed' => __( 'The bank account cannot be verified, either because the microdeposit amounts provided do not match the actual amounts, or because verification has failed too many times.',
+			'bank_account_unusable'                               => __( 'The bank account provided cannot be used for payouts. A different bank account must be used.', 'woo-stripe-payment' ),
+			'bank_account_unverified'                             => __( 'Your Connect platform is attempting to share an unverified bank account with a connected account.', 'woo-stripe-payment' ),
+			'bank_account_verification_failed'                    => __( 'The bank account cannot be verified, either because the microdeposit amounts provided do not match the actual amounts, or because verification has failed too many times.',
 				'woo-stripe-payment' ),
-			'card_decline_rate_limit_exceeded' => __( 'This card has been declined too many times. You can try to charge this card again after 24 hours. We suggest reaching out to your customer to make sure they have entered all of their information correctly and that there are no issues with their card.',
+			'card_decline_rate_limit_exceeded'                    => __( 'This card has been declined too many times. You can try to charge this card again after 24 hours. We suggest reaching out to your customer to make sure they have entered all of their information correctly and that there are no issues with their card.',
 				'woo-stripe-payment' ),
-			'charge_already_captured'          => __( 'The charge you\'re attempting to capture has already been captured. Update the request with an uncaptured charge ID.', 'woo-stripe-payment' ),
-			'charge_already_refunded'          => __( 'The charge you\'re attempting to refund has already been refunded. Update the request to use the ID of a charge that has not been refunded.',
+			'charge_already_captured'                             => __( 'The charge you\'re attempting to capture has already been captured. Update the request with an uncaptured charge ID.', 'woo-stripe-payment' ),
+			'charge_already_refunded'                             => __( 'The charge you\'re attempting to refund has already been refunded. Update the request to use the ID of a charge that has not been refunded.',
 				'woo-stripe-payment' ),
-			'charge_disputed'                  => __( 'The charge you\'re attempting to refund has been charged back. Check the disputes documentation to learn how to respond to the dispute.',
+			'charge_disputed'                                     => __( 'The charge you\'re attempting to refund has been charged back. Check the disputes documentation to learn how to respond to the dispute.',
 				'woo-stripe-payment' ),
-			'charge_exceeds_source_limit'      => __( 'This charge would cause you to exceed your rolling-window processing limit for this source type. Please retry the charge later, or contact us to request a higher processing limit.',
+			'charge_exceeds_source_limit'                         => __( 'This charge would cause you to exceed your rolling-window processing limit for this source type. Please retry the charge later, or contact us to request a higher processing limit.',
 				'woo-stripe-payment' ),
-			'charge_expired_for_capture'       => __( 'The charge cannot be captured as the authorization has expired. Auth and capture charges must be captured within seven days.',
+			'charge_expired_for_capture'                          => __( 'The charge cannot be captured as the authorization has expired. Auth and capture charges must be captured within seven days.',
 				'woo-stripe-payment' ),
-			'charge_invalid_parameter'         => __( 'One or more provided parameters was not allowed for the given operation on the Charge. Check our API reference or the returned error message to see which values were not correct for that Charge.',
+			'charge_invalid_parameter'                            => __( 'One or more provided parameters was not allowed for the given operation on the Charge. Check our API reference or the returned error message to see which values were not correct for that Charge.',
 				'woo-stripe-payment' ),
-			'email_invalid'                    => __( 'The email address is invalid (e.g., not properly formatted). Check that the email address is properly formatted and only includes allowed characters.',
+			'email_invalid'                                       => __( 'The email address is invalid (e.g., not properly formatted). Check that the email address is properly formatted and only includes allowed characters.',
 				'woo-stripe-payment' ),
-			'idempotency_key_in_use'           => __( 'The idempotency key provided is currently being used in another request. This occurs if your integration is making duplicate requests simultaneously.',
+			'idempotency_key_in_use'                              => __( 'The idempotency key provided is currently being used in another request. This occurs if your integration is making duplicate requests simultaneously.',
 				'woo-stripe-payment' ),
-			'invalid_charge_amount'            => __( 'The specified amount is invalid. The charge amount must be a positive integer in the smallest currency unit, and not exceed the minimum or maximum amount.',
+			'invalid_charge_amount'                               => __( 'The specified amount is invalid. The charge amount must be a positive integer in the smallest currency unit, and not exceed the minimum or maximum amount.',
 				'woo-stripe-payment' ),
-			'invalid_source_usage'             => __( 'The source cannot be used because it is not in the correct state (e.g., a charge request is trying to use a source with a pending, failed, or consumed source). Check the status of the source you are attempting to use.',
+			'invalid_source_usage'                                => __( 'The source cannot be used because it is not in the correct state (e.g., a charge request is trying to use a source with a pending, failed, or consumed source). Check the status of the source you are attempting to use.',
 				'woo-stripe-payment' ),
-			'missing'                          => __( 'Both a customer and source ID have been provided, but the source has not been saved to the customer. To create a charge for a customer with a specified source, you must first save the card details.',
+			'missing'                                             => __( 'Both a customer and source ID have been provided, but the source has not been saved to the customer. To create a charge for a customer with a specified source, you must first save the card details.',
 				'woo-stripe-payment' ),
-			'postal_code_invalid'              => __( 'The ZIP code provided was incorrect.', 'woo-stripe-payment' ),
-			'processing_error'                 => __( 'An error occurred while processing the card. Try again later or with a different payment method.', 'woo-stripe-payment' ),
-			'card_not_supported'               => __( 'The card does not support this type of purchase.', 'woo-stripe-payment' ),
-			'call_issuer'                      => __( 'The card has been declined for an unknown reason.', 'woo-stripe-payment' ),
-			'card_velocity_exceeded'           => __( 'The customer has exceeded the balance or credit limit available on their card.', 'woo-stripe-payment' ),
-			'currency_not_supported'           => __( 'The card does not support the specified currency.', 'woo-stripe-payment' ),
-			'do_not_honor'                     => __( 'The card has been declined for an unknown reason.', 'woo-stripe-payment' ),
-			'fraudulent'                       => __( 'The payment has been declined as Stripe suspects it is fraudulent.', 'woo-stripe-payment' ),
-			'generic_decline'                  => __( 'The card has been declined for an unknown reason.', 'woo-stripe-payment' ),
-			'incorrect_pin'                    => __( 'The PIN entered is incorrect. ', 'woo-stripe-payment' ),
-			'insufficient_funds'               => __( 'The card has insufficient funds to complete the purchase.', 'woo-stripe-payment' ),
-			'empty_element'                    => __( 'Please select a payment method before proceeding.', 'woo-stripe-payment' ),
-			'empty_element_sepa_debit'         => __( 'Please enter your IBAN before proceeding.', 'woo-stripe-payment' ),
-			'empty_element_ideal'              => __( 'Please select a bank before proceeding', 'woo-stripe-payment' ),
-			'incomplete_iban'                  => __( 'The IBAN you entered is incomplete.', 'woo-stripe-payment' ),
-			'incomplete_boleto_tax_id'         => __( 'Please enter a valid CPF / CNPJ', 'woo-stripe-payment' ),
-			'test_mode_live_card'              => __( 'Your card was declined. Your request was in test mode, but you used a real credit card. Only test cards can be used in test mode.',
-				'woo-stripe-payment' )
+			'postal_code_invalid'                                 => __( 'The ZIP code provided was incorrect.', 'woo-stripe-payment' ),
+			'processing_error'                                    => __( 'An error occurred while processing the card. Try again later or with a different payment method.', 'woo-stripe-payment' ),
+			'card_not_supported'                                  => __( 'The card does not support this type of purchase.', 'woo-stripe-payment' ),
+			'call_issuer'                                         => __( 'The card has been declined for an unknown reason.', 'woo-stripe-payment' ),
+			'card_velocity_exceeded'                              => __( 'The customer has exceeded the balance or credit limit available on their card.', 'woo-stripe-payment' ),
+			'currency_not_supported'                              => __( 'The card does not support the specified currency.', 'woo-stripe-payment' ),
+			'do_not_honor'                                        => __( 'The card has been declined for an unknown reason.', 'woo-stripe-payment' ),
+			'fraudulent'                                          => __( 'The payment has been declined as Stripe suspects it is fraudulent.', 'woo-stripe-payment' ),
+			'generic_decline'                                     => __( 'The card has been declined for an unknown reason.', 'woo-stripe-payment' ),
+			'incorrect_pin'                                       => __( 'The PIN entered is incorrect. ', 'woo-stripe-payment' ),
+			'insufficient_funds'                                  => __( 'The card has insufficient funds to complete the purchase.', 'woo-stripe-payment' ),
+			'empty_element'                                       => __( 'Please select a payment method before proceeding.', 'woo-stripe-payment' ),
+			'empty_element_sepa_debit'                            => __( 'Please enter your IBAN before proceeding.', 'woo-stripe-payment' ),
+			'empty_element_ideal'                                 => __( 'Please select a bank before proceeding', 'woo-stripe-payment' ),
+			'incomplete_iban'                                     => __( 'The IBAN you entered is incomplete.', 'woo-stripe-payment' ),
+			'incomplete_boleto_tax_id'                            => __( 'Please enter a valid CPF / CNPJ', 'woo-stripe-payment' ),
+			'test_mode_live_card'                                 => __( 'Your card was declined. Your request was in test mode, but you used a real credit card. Only test cards can be used in test mode.',
+				'woo-stripe-payment' ),
+			'server_side_confirmation_beta'                       => __( 'You do not have permission to use the PaymentElement card form. Please send a request to https://support.stripe.com/ and ask for the "server_side_confirmation_beta" to be added to your account.', 'woo-stripe-payment' ),
+			'phone_required'                                      => __( 'Please provide a billing phone number.', 'woo-stripe-payment' ),
+			'ach_instant_only'                                    => __( 'Your payment could not be processed at this time because your bank account does not support instant verification.', 'woo-stripe-payment' ),
+			'payment_intent_konbini_rejected_confirmation_number' => __( 'The confirmation number was rejected by Konbini. Please try again.', 'woo-stripe-payment' ),
+			'payment_intent_payment_attempt_expired'              => __( 'The payment attempt for this payment method has expired. Please try again.', '' )
 		)
 	);
 }
@@ -1136,7 +1179,7 @@ function wc_stripe_get_error_messages() {
  * Return an array of Stripe currencies where the value of each
  * currency is the curency multiplier.
  *
- * @since 3.1.2
+ * @since   3.1.2
  * @return mixed
  * @package Stripe/Functions
  */
@@ -1179,7 +1222,7 @@ function wc_stripe_get_currencies() {
  * @param int                 $order_id
  * @param \Stripe\ApiResource $object
  *
- * @since 3.1.3
+ * @since   3.1.3
  * @package Stripe/Functions
  */
 function wc_stripe_filter_order_id( $order_id, $object ) {
@@ -1189,7 +1232,7 @@ function wc_stripe_filter_order_id( $order_id, $object ) {
 /**
  * Removes order locks that have expired so the options table does not get cluttered with transients.
  *
- * @since 3.1.6
+ * @since    3.1.6
  * @package  Stripe/Functions
  */
 function wc_stripe_remove_order_locks() {
@@ -1244,6 +1287,7 @@ function wc_stripe_get_checkout_fields() {
 			$field['required'] = (bool) $field['required'];
 		}
 	} );
+	do_action( 'wc_stripe_after_get_checkout_fields', $fields );
 
 	return $fields;
 }

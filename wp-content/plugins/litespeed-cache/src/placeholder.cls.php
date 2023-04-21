@@ -23,6 +23,7 @@ class Placeholder extends Base {
 	private $_conf_lqip_min_h;
 	private $_conf_placeholder_resp_color;
 	private $_conf_placeholder_resp_async;
+	private $_conf_ph_default;
 	private $_placeholder_resp_dict = array();
 	private $_ph_queue = array();
 
@@ -330,7 +331,7 @@ class Placeholder extends Base {
 			$res = $_instance->_generate_placeholder( $v, true );
 
 			// Exit queue if out of quota
-			if ( $res == 'out_of_quota' ) {
+			if ( $res === 'out_of_quota' ) {
 				return;
 			}
 

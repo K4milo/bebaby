@@ -1,30 +1,17 @@
 import {registerPaymentMethod} from '@woocommerce/blocks-registry';
 import {getSettings, cartContainsPreOrder, cartContainsSubscription} from "../util";
-import {LocalPaymentSourceContent} from './local-payment-method';
 import {PaymentMethodLabel, PaymentMethod} from "../../components/checkout";
-import {canMakePayment} from "./local-payment-method";
+import {canMakePayment, LocalPaymentIntentContent} from "./local-payment-method";
 import {IbanElement} from "@stripe/react-stripe-js";
 
 const getData = getSettings('stripe_sepa_data');
 
-const getSourceArgs = (args, {billingData}) => {
-    args.mandate = {
-        notification_method: billingData.email ? 'email' : 'manual',
-        interval: cartContainsSubscription() || cartContainsPreOrder() ? 'scheduled' : 'one_time'
-    }
-    if (args.mandate.interval === 'scheduled') {
-        delete args.amount;
-    }
-    return args;
-}
-
-const LocalPaymentMethod = (PaymentMethod) => ({getData, ...props}) => {
+const LocalPaymentMethod = (PaymentMethod) => (props) => {
     return (
         <>
-            <PaymentMethod {...{...props, getData}}/>
-            <div className={'wc-stripe-blocks-sepa__mandate'}>
-                {getData('mandate')}
-            </div>
+            <PaymentMethod {...props}/>
+            <div className={'wc-stripe-blocks-mandate sepa-mandate'}
+                 dangerouslySetInnerHTML={{__html: props.getData('mandate')}}/>
         </>
     )
 }
@@ -42,11 +29,11 @@ if (getData()) {
         placeOrderButtonLabel: getData('placeOrderButtonLabel'),
         canMakePayment: canMakePayment(getData),
         content: <SepaPaymentMethod
-            content={LocalPaymentSourceContent}
+            content={LocalPaymentIntentContent}
             getData={getData}
-            element={IbanElement}
-            getSourceArgs={getSourceArgs}/>,
-        edit: <LocalPaymentSourceContent getData={getData}/>,
+            confirmationMethod={'confirmSepaDebitPayment'}
+            component={IbanElement}/>,
+        edit: <PaymentMethod content={LocalPaymentIntentContent} getData={getData}/>,
         supports: {
             showSavedCards: false,
             showSaveOption: false,

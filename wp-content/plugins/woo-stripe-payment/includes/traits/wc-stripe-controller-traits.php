@@ -1,9 +1,10 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 /**
  *
- * @since 3.1.0
+ * @since  3.1.0
  * @author Payment Plugins
  */
 trait WC_Stripe_Controller_Cart_Trait {
@@ -29,9 +30,9 @@ trait WC_Stripe_Controller_Cart_Trait {
 	/**
 	 * @param WP_Rest_Request $request
 	 *
+	 * @since 3.1.8
 	 * @return array
 	 * @throws Exception
-	 * @since 3.1.8
 	 */
 	private function get_shipping_method_from_request( $request ) {
 		if ( ( $method = $request->get_param( 'shipping_method' ) ) ) {
@@ -46,7 +47,7 @@ trait WC_Stripe_Controller_Cart_Trait {
 	}
 
 	/**
-	 * @param array $address
+	 * @param array           $address
 	 * @param WP_REST_Request $request
 	 */
 	public function validate_shipping_address( $address, $request ) {
@@ -57,10 +58,50 @@ trait WC_Stripe_Controller_Cart_Trait {
 
 		return true;
 	}
+
+	/**
+	 * Return an array of arguments used to add a product to the cart.
+	 *
+	 * @param WP_REST_Request $request
+	 *
+	 * @since 3.3.39
+	 * @return array
+	 */
+	protected function get_add_to_cart_args( $request ) {
+		$session_args = WC()->session ? WC()->session->get( WC_Stripe_Constants::CART_ARGS, [ 'product_id' => 0 ] )
+			: [ 'product_id' => 0 ];
+		$args         = array(
+			'product_id'   => $request->get_param( 'product_id' ),
+			'qty'          => $request->get_param( 'qty' ),
+			'variation_id' => $request->get_param( 'variation_id' )
+		);
+		$variation    = array();
+		if ( $request->get_param( 'variation_id' ) ) {
+			foreach ( $request->get_params() as $key => $value ) {
+				if ( 'attribute_' === substr( $key, 0, 10 ) ) {
+					$variation[ sanitize_title( wp_unslash( $key ) ) ] = wp_unslash( $value );
+				}
+			}
+		}
+		$args['variation'] = $variation;
+
+		if ( isset( $session_args['product_id'] ) && $args['product_id'] === $session_args['product_id'] ) {
+			array_walk( $args, function ( &$item, $key ) use ( $session_args ) {
+				if ( ! $item && ! empty( $session_args[ $key ] ) ) {
+					$item = $session_args[ $key ];
+				}
+			} );
+		}
+		WC()->session->set( WC_Stripe_Constants::CART_ARGS, $args );
+
+		return $args;
+	}
+
 }
 
 /**
  * Trait WC_Stripe_Controller_Frontend_Trait
+ *
  * @since 3.1.8
  */
 trait WC_Stripe_Controller_Frontend_Trait {
@@ -90,8 +131,8 @@ trait WC_Stripe_Controller_Frontend_Trait {
 	/**
 	 * @param $request
 	 *
-	 * @return bool|WP_Error
 	 * @since 3.2.2
+	 * @return bool|WP_Error
 	 */
 	public function validate_rest_nonce( $request ) {
 		if ( ! isset( $request['wp_rest_nonce'] ) || ! wp_verify_nonce( $request['wp_rest_nonce'], 'wp_rest' ) ) {
@@ -100,4 +141,24 @@ trait WC_Stripe_Controller_Frontend_Trait {
 
 		return true;
 	}
+
+	/**
+	 * @param \WC_Cart $cart
+	 *
+	 * @return void
+	 */
+	protected function empty_cart( $cart ) {
+		foreach ( $cart->get_cart() as $key => $item ) {
+			unset( $cart->cart_contents[ $key ] );
+		}
+	}
+
+	protected function get_supported_gateways( $context = 'product' ) {
+		return array_filter( WC()->payment_gateways()->payment_gateways(), function ( $gateway ) use ( $context ) {
+			return $gateway instanceof WC_Payment_Gateway_Stripe
+			       && $gateway->supports( "wc_stripe_{$context}_checkout" )
+			       && wc_string_to_bool( $gateway->get_option( 'enabled' ) );
+		} );
+	}
+
 }

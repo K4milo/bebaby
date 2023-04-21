@@ -8,8 +8,8 @@ if ( ! class_exists( 'WC_Payment_Gateway_Stripe' ) ) {
 
 /**
  *
- * @since 3.0.0
- * @author PaymentPlugins
+ * @since   3.0.0
+ * @author  PaymentPlugins
  * @package Stripe/Gateways
  */
 class WC_Payment_Gateway_Stripe_GooglePay extends WC_Payment_Gateway_Stripe {
@@ -102,10 +102,11 @@ class WC_Payment_Gateway_Stripe_GooglePay extends WC_Payment_Gateway_Stripe {
 				'merchant_id'        => wc_stripe_mode() === 'test' ? '' : $this->get_option( 'merchant_id' ),
 				'merchant_name'      => $this->get_option( 'merchant_name' ),
 				'processing_country' => WC()->countries ? WC()->countries->get_base_country() : wc_get_base_location()['country'],
-				'button_color'       => $this->get_option( 'button_color' ),
+				'button_color'       => 'black',
 				'button_style'       => $this->get_option( 'button_style' ),
 				'button_size_mode'   => 'fill',
 				'button_locale'      => $this->get_payment_button_locale(),
+				'button_shape'       => $this->get_option( 'button_shape', 'rect' ),
 				'total_price_label'  => __( 'Total', 'woo-stripe-payment' ),
 				'routes'             => array( 'payment_data' => WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->googlepay->rest_uri( 'shipping-data' ) ) ),
 				'messages'           => array( 'invalid_amount' => __( 'Please update you product quantity before using Google Pay.', 'woo-stripe-payment' ) )
@@ -218,12 +219,6 @@ class WC_Payment_Gateway_Stripe_GooglePay extends WC_Payment_Gateway_Stripe {
 		return $this->get_formatted_shipping_label( $price, $rate, $incl_tax );
 	}
 
-	public function add_to_cart_response( $data ) {
-		$data['googlepay']['displayItems'] = $this->get_display_items();
-
-		return $data;
-	}
-
 	/**
 	 * @param array $deps
 	 * @param       $scripts
@@ -265,8 +260,38 @@ class WC_Payment_Gateway_Stripe_GooglePay extends WC_Payment_Gateway_Stripe {
 	 */
 	public function get_supported_button_locales() {
 		return apply_filters( 'wc_stripe_googlepay_supported_button_locales',
-			array( 'en', 'ar', 'bg', 'ca', 'cs', 'da', 'de', 'el', 'es', 'et', 'fi', 'fr', 'hr',
-			       'id', 'it', 'ja', 'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ru', 'sk', 'sl', 'sr', 'sv', 'th', 'tr', 'uk', 'zh'
+			array(
+				'en',
+				'ar',
+				'bg',
+				'ca',
+				'cs',
+				'da',
+				'de',
+				'el',
+				'es',
+				'et',
+				'fi',
+				'fr',
+				'hr',
+				'id',
+				'it',
+				'ja',
+				'ko',
+				'ms',
+				'nl',
+				'no',
+				'pl',
+				'pt',
+				'ru',
+				'sk',
+				'sl',
+				'sr',
+				'sv',
+				'th',
+				'tr',
+				'uk',
+				'zh'
 			)
 		);
 	}

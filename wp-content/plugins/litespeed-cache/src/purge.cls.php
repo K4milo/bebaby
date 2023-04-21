@@ -36,6 +36,7 @@ class Purge extends Base {
 	const TYPE_PURGE_ALL_OPCACHE = 'purge_all_opcache';
 
 	const TYPE_PURGE_FRONT = 'purge_front';
+	const TYPE_PURGE_UCSS = 'purge_ucss';
 	const TYPE_PURGE_FRONTPAGE = 'purge_frontpage';
 	const TYPE_PURGE_PAGES = 'purge_pages';
 	const TYPE_PURGE_ERROR = 'purge_error';
@@ -65,6 +66,7 @@ class Purge extends Base {
 
 		add_action( 'wp_update_comment_count', array( $this, 'purge_feeds' ) );
 
+		if ($this->conf(self::O_OPTM_UCSS)) add_action('edit_post', __NAMESPACE__ . '\Purge::purge_ucss');
 	}
 
 	/**
@@ -135,6 +137,10 @@ class Purge extends Base {
 				$this->_purge_front();
 				break;
 
+			case self::TYPE_PURGE_UCSS:
+				$this->_purge_ucss();
+				break;
+
 			case self::TYPE_PURGE_FRONTPAGE:
 				$this->_purge_frontpage();
 				break;
@@ -171,13 +177,20 @@ class Purge extends Base {
 	 * @access private
 	 */
 	private function _purge_all( $reason = false ) {
-		$this->_purge_all_lscache( true );
-		$this->_purge_all_cssjs( true );
-		$this->_purge_all_localres( true );
-		// $this->_purge_all_ccss( true );
-		// $this->_purge_all_lqip( true );
-		$this->_purge_all_object( true );
-		$this->purge_all_opcache( true );
+		// if ( defined( 'LITESPEED_CLI' ) ) {
+		// 	// Can't send, already has output, need to save and wait for next run
+		// 	self::update_option( self::DB_QUEUE, $curr_built );
+		// 	self::debug( 'CLI request, queue stored: ' . $curr_built );
+		// }
+		// else {
+			$this->_purge_all_lscache( true );
+			$this->_purge_all_cssjs( true );
+			$this->_purge_all_localres( true );
+			// $this->_purge_all_ccss( true );
+			// $this->_purge_all_lqip( true );
+			$this->_purge_all_object( true );
+			$this->purge_all_opcache( true );
+		// }
 
 		if ( ! is_string( $reason ) ) {
 			$reason = false;
@@ -222,7 +235,7 @@ class Purge extends Base {
 	private function _purge_all_ccss( $silence = false ) {
 		do_action( 'litespeed_purged_all_ccss' );
 
-		$this->rm_cache_folder( 'ccss' );
+		$this->cls( 'CSS' )->rm_cache_folder( 'ccss' );
 
 		$this->cls( 'Data' )->url_file_clean( 'ccss' );
 
@@ -241,7 +254,7 @@ class Purge extends Base {
 	private function _purge_all_ucss( $silence = false ) {
 		do_action( 'litespeed_purged_all_ucss' );
 
-		$this->rm_cache_folder( 'ucss' );
+		$this->cls( 'CSS' )->rm_cache_folder( 'ucss' );
 
 		$this->cls( 'Data' )->url_file_clean( 'ucss' );
 
@@ -265,7 +278,11 @@ class Purge extends Base {
 		}
 		$post_id_or_url = untrailingslashit( $post_id_or_url );
 
-		Data::cls()->mark_as_expired( $post_id_or_url );
+		$existing_url_files = Data::cls()->mark_as_expired( $post_id_or_url, true );
+		if ( $existing_url_files ) {
+			// Add to UCSS Q
+			self::cls( 'UCSS' )->add_to_q($existing_url_files);
+		}
 	}
 
 	/**
@@ -277,7 +294,7 @@ class Purge extends Base {
 	private function _purge_all_lqip( $silence = false ) {
 		do_action( 'litespeed_purged_all_lqip' );
 
-		$this->rm_cache_folder( 'lqip' );
+		$this->cls( 'Placeholder' )->rm_cache_folder( 'lqip' );
 
 		if ( ! $silence ) {
 			$msg = __( 'Cleaned all LQIP files.', 'litespeed-cache' );
@@ -294,7 +311,7 @@ class Purge extends Base {
 	private function _purge_all_avatar( $silence = false ) {
 		do_action( 'litespeed_purged_all_avatar' );
 
-		$this->rm_cache_folder( 'avatar' );
+		$this->cls( 'Avatar' )->rm_cache_folder( 'avatar' );
 
 		if ( ! $silence ) {
 			$msg = __( 'Cleaned all Gravatar files.', 'litespeed-cache' );
@@ -326,8 +343,8 @@ class Purge extends Base {
 	 * @access   private
 	 */
 	private function _purge_all_cssjs( $silence = false ) {
-		if ( defined( 'LITESPEED_DID_send_headers' ) ) {
-			self::debug( "❌ Bypassed cssjs delete as header sent (lscache purge after this point will fail)" );
+		if ( defined( 'DOING_CRON' ) || defined( 'LITESPEED_DID_send_headers' ) ) {
+			self::debug( "❌ Bypassed cssjs delete as header sent (lscache purge after this point will fail) or doing cron" );
 			return;
 		}
 		$this->_purge_all_lscache( $silence ); // Purge CSSJS must purge lscache too to avoid 404
@@ -338,8 +355,8 @@ class Purge extends Base {
 
 		$this->_add( Tag::TYPE_MIN );
 
-		$this->rm_cache_folder( 'css' );
-		$this->rm_cache_folder( 'js' );
+		$this->cls( 'CSS' )->rm_cache_folder( 'css' );
+		$this->cls( 'CSS' )->rm_cache_folder( 'js' );
 
 		$this->cls( 'Data' )->url_file_clean( 'css' );
 		$this->cls( 'Data' )->url_file_clean( 'js' );
@@ -471,7 +488,7 @@ class Purge extends Base {
 		}
 		else {
 			@header( $curr_built );
-			if ( defined( 'LITESPEED_DID_send_headers' ) && apply_filters( 'litespeed_delay_purge', false ) ) {
+			if ( defined( 'DOING_CRON' ) || defined( 'LITESPEED_DID_send_headers' ) || apply_filters( 'litespeed_delay_purge', false ) ) {
 				self::update_option( $purge2 ? self::DB_QUEUE2 : self::DB_QUEUE, $curr_built );
 				self::debug( 'Output existed, queue stored: ' . $curr_built );
 			}
@@ -591,6 +608,26 @@ class Purge extends Base {
 			exit( 'no referer' );
 		}
 
+		$this->purge_url( $_SERVER[ 'HTTP_REFERER' ] );
+
+		wp_redirect( $_SERVER[ 'HTTP_REFERER' ] );
+		exit();
+	}
+
+	/**
+	 * Purge single UCSS
+	 * @since 4.7
+	 */
+	private function _purge_ucss() {
+		if ( empty( $_SERVER[ 'HTTP_REFERER' ] ) ) {
+			exit( 'no referer' );
+		}
+
+		$url_tag = empty( $_GET[ 'url_tag' ] ) ? $_SERVER[ 'HTTP_REFERER' ] : $_GET[ 'url_tag' ];
+
+		self::debug( 'Purge ucss [url_tag] ' . $url_tag );
+
+		do_action( 'litespeed_purge_ucss', $url_tag );
 		$this->purge_url( $_SERVER[ 'HTTP_REFERER' ] );
 
 		wp_redirect( $_SERVER[ 'HTTP_REFERER' ] );
@@ -1091,7 +1128,13 @@ class Purge extends Base {
 
 		// post
 		$purge_tags[] = Tag::TYPE_POST . $post_id;
-		$purge_tags[] = Tag::get_uri_tag(wp_make_link_relative(get_permalink($post_id)));
+		$post_status = get_post_status($post_id);
+		if ( function_exists( 'is_post_status_viewable' ) ) {
+			$viewable = is_post_status_viewable($post_status);
+			if ($viewable) {
+				$purge_tags[] = Tag::get_uri_tag(wp_make_link_relative(get_permalink($post_id)));
+			}
+		}
 
 		// for archive of categories|tags|custom tax
 		global $post;
@@ -1100,8 +1143,11 @@ class Purge extends Base {
 		$post_type = $post->post_type;
 
 		global $wp_widget_factory;
-		$recent_posts = $wp_widget_factory->widgets['WP_Widget_Recent_Posts'];
-		if ( ! is_null($recent_posts) ) {
+		// recent_posts
+		$recent_posts = isset( $wp_widget_factory->widgets['WP_Widget_Recent_Posts'] )
+			? $wp_widget_factory->widgets['WP_Widget_Recent_Posts']
+			: null;
+		if ( ! is_null( $recent_posts ) ) {
 			$purge_tags[] = Tag::TYPE_WIDGET . $recent_posts->id;
 		}
 

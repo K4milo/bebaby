@@ -10,6 +10,14 @@ use Automattic\WooCommerce\Blocks\Registry\Container as Container;
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
 use \PaymentPlugins\Blocks\Stripe\Assets\Api as AssetsApi;
 use PaymentPlugins\Blocks\Stripe\Config;
+use PaymentPlugins\Blocks\Stripe\Package;
+use PaymentPlugins\Blocks\Stripe\Payments\Gateways\AffirmPayment;
+use PaymentPlugins\Blocks\Stripe\Payments\Gateways\BlikPayment;
+use PaymentPlugins\Blocks\Stripe\Payments\Gateways\KonbiniPayment;
+use PaymentPlugins\Blocks\Stripe\Payments\Gateways\PayNowPayment;
+use PaymentPlugins\Stripe\Controllers\PaymentIntent;
+use PaymentPlugins\Stripe\Installments\InstallmentController;
+use PaymentPlugins\Stripe\Link\LinkIntegration;
 
 class PaymentsApi {
 
@@ -29,88 +37,113 @@ class PaymentsApi {
 	 */
 	protected $payment_result;
 
+	private $payment_methods = [];
+
 	public function __construct( Container $container, Config $config, AssetDataRegistry $assets_registry ) {
 		$this->container       = $container;
 		$this->config          = $config;
 		$this->assets_registry = $assets_registry;
 		$this->add_payment_methods();
-		$this->init();
+		$this->initialize();
 	}
 
-	private function init() {
+	private function initialize() {
 		add_action( 'woocommerce_blocks_payment_method_type_registration', array( $this, 'register_payment_methods' ) );
 		add_action( 'woocommerce_blocks_checkout_enqueue_data', array( $this, 'enqueue_checkout_data' ) );
 		add_action( 'woocommerce_blocks_cart_enqueue_data', array( $this, 'enqueue_cart_data' ) );
 		add_action( 'woocommerce_rest_checkout_process_payment_with_context', array( $this, 'payment_with_context' ), 10, 2 );
 		add_action( 'wc_stripe_blocks_enqueue_styles', array( $this, 'enqueue_payment_styles' ) );
+		add_action( 'enqueue_block_editor_assets', [ $this, 'enqueue_editor_styles' ] );
 	}
 
 	private function add_payment_methods() {
-		$this->container->register( CreditCardPayment::class, function ( Container $container ) {
-			return new CreditCardPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\CreditCardPayment::class, function ( Container $container ) {
+			$instance = new Gateways\CreditCardPayment( $container->get( AssetsApi::class ) );
+			$instance->set_installments( InstallmentController::instance() );
+			$instance->set_payment_intent_controller( PaymentIntent::instance() );
+
+			return $instance;
 		} );
-		$this->container->register( GooglePayPayment::class, function ( Container $container ) {
-			return new GooglePayPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\GooglePayPayment::class, function ( Container $container ) {
+			return new Gateways\GooglePayPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( ApplePayPayment::class, function ( Container $container ) {
-			return new ApplePayPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\ApplePayPayment::class, function ( Container $container ) {
+			return new Gateways\ApplePayPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( PaymentRequest::class, function ( Container $container ) {
-			return new PaymentRequest( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\PaymentRequest::class, function ( Container $container ) {
+			return new Gateways\PaymentRequest( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( IdealPayment::class, function ( Container $container ) {
-			return new IdealPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\IdealPayment::class, function ( Container $container ) {
+			return new Gateways\IdealPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( P24Payment::class, function ( Container $container ) {
-			return new P24Payment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\P24Payment::class, function ( Container $container ) {
+			return new Gateways\P24Payment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( BancontactPayment::class, function ( Container $container ) {
-			return new BancontactPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\BancontactPayment::class, function ( Container $container ) {
+			return new Gateways\BancontactPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( GiropayPayment::class, function ( Container $container ) {
-			return new GiropayPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\GiropayPayment::class, function ( Container $container ) {
+			return new Gateways\GiropayPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( EPSPayment::class, function ( Container $container ) {
-			return new EPSPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\EPSPayment::class, function ( Container $container ) {
+			return new Gateways\EPSPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( MultibancoPayment::class, function ( Container $container ) {
-			return new MultibancoPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\MultibancoPayment::class, function ( Container $container ) {
+			return new Gateways\MultibancoPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( SepaPayment::class, function ( Container $container ) {
-			return new SepaPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\SepaPayment::class, function ( Container $container ) {
+			return new Gateways\SepaPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( SofortPayment::class, function ( Container $container ) {
-			return new SofortPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\SofortPayment::class, function ( Container $container ) {
+			return new Gateways\SofortPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( WeChatPayment::class, function ( Container $container ) {
-			return new WeChatPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\WeChatPayment::class, function ( Container $container ) {
+			return new Gateways\WeChatPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( FPXPayment::class, function ( Container $container ) {
-			return new FPXPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\FPXPayment::class, function ( Container $container ) {
+			return new Gateways\FPXPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( BECSPayment::class, function ( Container $container ) {
-			return new BECSPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\BECSPayment::class, function ( Container $container ) {
+			return new Gateways\BECSPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( GrabPayPayment::class, function ( Container $container ) {
-			return new GrabPayPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\GrabPayPayment::class, function ( Container $container ) {
+			return new Gateways\GrabPayPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( AlipayPayment::class, function ( Container $container ) {
-			return new AlipayPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\AlipayPayment::class, function ( Container $container ) {
+			return new Gateways\AlipayPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( KlarnaPayment::class, function ( Container $container ) {
-			return new KlarnaPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\KlarnaPayment::class, function ( Container $container ) {
+			return new Gateways\KlarnaPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( ACHPayment::class, function ( Container $container ) {
-			return new ACHPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\ACHPayment::class, function ( Container $container ) {
+			return new Gateways\ACHPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( AfterpayPayment::class, function ( Container $container ) {
-			return new AfterpayPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\AfterpayPayment::class, function ( Container $container ) {
+			return new Gateways\AfterpayPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( BoletoPayment::class, function ( Container $container ) {
-			return new BoletoPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\BoletoPayment::class, function ( Container $container ) {
+			return new Gateways\BoletoPayment( $container->get( AssetsApi::class ) );
 		} );
-		$this->container->register( OXXOPayment::class, function ( Container $container ) {
-			return new OXXOPayment( $container->get( AssetsApi::class ) );
+		$this->container->register( Gateways\OXXOPayment::class, function ( Container $container ) {
+			return new Gateways\OXXOPayment( $container->get( AssetsApi::class ) );
+		} );
+		$this->container->register( Gateways\LinkPayment::class, function ( $container ) {
+			$instance = new Gateways\LinkPayment( LinkIntegration::instance(), $container->get( AssetsApi::class ) );
+			$instance->set_payment_intent_controller( PaymentIntent::instance() );
+
+			return $instance;
+		} );
+		$this->container->register( Gateways\AffirmPayment::class, function ( Container $container ) {
+			return new AffirmPayment( $container->get( AssetsApi::class ) );
+		} );
+		$this->container->register( Gateways\BlikPayment::class, function ( Container $container ) {
+			return new BlikPayment( $container->get( AssetsApi::class ) );
+		} );
+		$this->container->register( Gateways\KonbiniPayment::class, function ( Container $container ) {
+			return new KonbiniPayment( $container->get( AssetsApi::class ) );
+		} );
+		$this->container->register( Gateways\PayNowPayment::class, function ( Container $container ) {
+			return new PayNowPayment( $container->get( AssetsApi::class ) );
 		} );
 	}
 
@@ -120,54 +153,51 @@ class PaymentsApi {
 	 * @param PaymentMethodRegistry $registry
 	 */
 	public function register_payment_methods( PaymentMethodRegistry $registry ) {
-		$payment_gateways              = WC()->payment_gateways()->payment_gateways();
+		//$payment_gateways              = WC()->payment_gateways()->payment_gateways();
 		$this->payment_method_registry = $registry;
 		$payment_methods               = array(
-			CreditCardPayment::class,
-			GooglePayPayment::class,
-			ApplePayPayment::class,
-			PaymentRequest::class,
-			IdealPayment::class,
-			P24Payment::class,
-			BancontactPayment::class,
-			GiropayPayment::class,
-			EPSPayment::class,
-			MultibancoPayment::class,
-			SepaPayment::class,
-			SofortPayment::class,
-			WeChatPayment::class,
-			FPXPayment::class,
-			BECSPayment::class,
-			GrabPayPayment::class,
-			AlipayPayment::class,
-			KlarnaPayment::class,
-			ACHPayment::class,
-			AfterpayPayment::class,
-			BoletoPayment::class,
-			OXXOPayment::class
+			Gateways\CreditCardPayment::class,
+			Gateways\GooglePayPayment::class,
+			Gateways\ApplePayPayment::class,
+			Gateways\PaymentRequest::class,
+			Gateways\IdealPayment::class,
+			Gateways\P24Payment::class,
+			Gateways\BancontactPayment::class,
+			Gateways\GiropayPayment::class,
+			Gateways\EPSPayment::class,
+			Gateways\MultibancoPayment::class,
+			Gateways\SepaPayment::class,
+			Gateways\SofortPayment::class,
+			Gateways\WeChatPayment::class,
+			Gateways\FPXPayment::class,
+			Gateways\BECSPayment::class,
+			Gateways\GrabPayPayment::class,
+			Gateways\AlipayPayment::class,
+			Gateways\KlarnaPayment::class,
+			Gateways\ACHPayment::class,
+			Gateways\AfterpayPayment::class,
+			Gateways\BoletoPayment::class,
+			Gateways\OXXOPayment::class,
+			Gateways\LinkPayment::class,
+			Gateways\AffirmPayment::class,
+			Gateways\BlikPayment::class,
+			Gateways\KonbiniPayment::class,
+			Gateways\PayNowPayment::class
 		);
+
 		foreach ( $payment_methods as $clazz ) {
-			$this->maybe_add_payment_method_to_registry( $clazz, $registry, $payment_gateways );
+			$this->add_payment_method_to_registry( $clazz, $registry );
 		}
 	}
 
 	/**
-	 * @param $clazz
+	 * @param                       $clazz
 	 * @param PaymentMethodRegistry $registry
-	 * @param array $payment_gateways
 	 */
-	private function maybe_add_payment_method_to_registry( $clazz, $registry, $payment_gateways ) {
-		if ( class_exists( $clazz ) ) {
-			try {
-				$reflection_class = new \ReflectionClass( $clazz );
-				$name             = $reflection_class->getDefaultProperties()['name'];
-				if ( isset( $payment_gateways[ $name ] ) ) {
-					$registry->register( $this->container->get( $clazz ) );
-				}
-			} catch ( \ReflectionException $e ) {
-				// fail silently
-			}
-		}
+	private function add_payment_method_to_registry( $clazz, $registry ) {
+		$instance = $this->container->get( $clazz );
+		$registry->register( $instance );
+		$this->payment_methods[] = $instance;
 	}
 
 	/**
@@ -181,6 +211,12 @@ class PaymentsApi {
 		}
 	}
 
+	public function enqueue_editor_styles() {
+		if ( wp_script_is( 'wc-checkout-block', 'registered' ) || wp_script_is( 'wc-cart-block', 'registered' ) ) {
+			Package::container()->get( AssetsApi::class )->enqueue_style();
+		}
+	}
+
 	public function enqueue_checkout_data() {
 		$this->enqueue_data( 'checkout' );
 	}
@@ -191,21 +227,29 @@ class PaymentsApi {
 
 	private function enqueue_data( $page ) {
 		if ( ! $this->assets_registry->exists( 'stripeGeneralData' ) ) {
-			$this->assets_registry->add( 'stripeGeneralData', array(
+			$this->assets_registry->add( 'stripeGeneralData', apply_filters( 'wc_stripe_blocks_general_data', array(
 				'page'           => $page,
 				'mode'           => wc_stripe_mode(),
 				'publishableKey' => wc_stripe_get_publishable_key(),
-				'account'        => wc_stripe_get_account_id(),
+				'stripeParams'   => [
+					'stripeAccount' => wc_stripe_get_account_id(),
+					'apiVersion'    => '2020-08-27',
+					'betas'         => []
+				],
 				'version'        => $this->config->get_version(),
 				'blocksVersion'  => \Automattic\WooCommerce\Blocks\Package::get_version(),
 				'routes'         => array(
-					'process/payment'     => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->checkout->rest_uri( 'checkout/payment' ) ),
-					'create/setup_intent' => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->payment_intent->rest_uri( 'setup-intent' ) ),
-					'sync/intent'         => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->payment_intent->rest_uri( 'sync-payment-intent' ) ),
-					'update/source'       => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->source->rest_uri( 'update' ) ),
-					'create/linkToken'    => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->plaid->rest_uri( 'link-token' ) )
-				)
-			) );
+					'process/payment'       => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->checkout->rest_uri( 'checkout/payment' ) ),
+					'create/setup_intent'   => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->payment_intent->rest_uri( 'setup-intent' ) ),
+					'create/payment_intent' => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->payment_intent->rest_uri( 'payment-intent' ) ),
+					'sync/intent'           => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->payment_intent->rest_uri( 'sync-payment-intent' ) ),
+					'update/source'         => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->source->rest_uri( 'update' ) ),
+					'payment/data'          => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->googlepay->rest_uri( 'shipping-data' ) ),
+					'shipping-address'      => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->cart->rest_uri( 'shipping-address' ) ),
+					'shipping-method'       => \WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->cart->rest_uri( 'shipping-method' ) )
+				),
+				'assetsUrl'      => stripe_wc()->assets_url()
+			) ) );
 		}
 		if ( ! $this->assets_registry->exists( 'stripeErrorMessages' ) ) {
 			$this->assets_registry->add( 'stripeErrorMessages', wc_stripe_get_error_messages() );
@@ -238,6 +282,13 @@ class PaymentsApi {
 				'stripeErrorMessage' => $error->get_error_message()
 			) );
 		}
+	}
+
+	/**
+	 * @return \PaymentPlugins\Blocks\Stripe\Payments\AbstractStripePayment[]
+	 */
+	public function get_payment_methods() {
+		return $this->payment_methods;
 	}
 
 }

@@ -1,13 +1,13 @@
 <footer class="site-footer">
   <div class="site-sub-footer__wrapper container">
     <div class="row site-footer__top">
-      <div class="col-lg-4 site-footer__widget">
+      <div class="col-lg-2 site-footer__widget">
         <?php dynamic_sidebar('footer-column-1'); ?>
       </div>
-      <div class="col-lg-4 site-footer__widget">
+      <div class="col-lg-3 site-footer__widget">
         <?php dynamic_sidebar('footer-column-2'); ?>
       </div>
-      <div class="col-lg-4 site-footer__widget">
+      <div class="col-lg-3 site-footer__widget">
         <?php dynamic_sidebar('footer-column-3'); ?>
       </div>
     </div>

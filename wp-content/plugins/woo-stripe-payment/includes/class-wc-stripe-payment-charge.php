@@ -1,14 +1,15 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 require_once( WC_STRIPE_PLUGIN_FILE_PATH . 'includes/abstract/abstract-wc-stripe-payment.php' );
 
 /**
  *
- * @package Stripe/Classes
- * @author Payment Plugins
- * @since 3.1.0
+ * @since   3.1.0
  *
+ * @author  Payment Plugins
+ * @package Stripe/Classes
  */
 class WC_Stripe_Payment_Charge extends WC_Stripe_Payment {
 
@@ -77,9 +78,9 @@ class WC_Stripe_Payment_Charge extends WC_Stripe_Payment {
 	public function scheduled_subscription_payment( $amount, $order ) {
 		$this->get_order_charge_args( $args, $order );
 
-		$args['source'] = $order->get_meta( WC_Stripe_Constants::PAYMENT_METHOD_TOKEN );
+		$args['source'] = $this->payment_method->get_order_meta_data( WC_Stripe_Constants::PAYMENT_METHOD_TOKEN, $order );
 
-		if ( ( $customer_id = $order->get_meta( WC_Stripe_Constants::CUSTOMER_ID ) ) ) {
+		if ( ( $customer_id = $this->payment_method->get_order_meta_data( WC_Stripe_Constants::CUSTOMER_ID, $order ) ) ) {
 			$args['customer'] = $customer_id;
 		} elseif ( ( $customer_id = wc_stripe_get_customer_id( $order->get_customer_id(), wc_stripe_order_mode( $order ) ) ) ) {
 			$args['customer'] = $customer_id;
@@ -128,7 +129,7 @@ class WC_Stripe_Payment_Charge extends WC_Stripe_Payment {
 
 	/**
 	 *
-	 * @param array $args
+	 * @param array    $args
 	 * @param WC_Order $order
 	 */
 	public function get_order_charge_args( &$args, $order ) {
@@ -180,4 +181,5 @@ class WC_Stripe_Payment_Charge extends WC_Stripe_Payment {
 	public function can_void_order( $order ) {
 		return $order->get_transaction_id();
 	}
+
 }

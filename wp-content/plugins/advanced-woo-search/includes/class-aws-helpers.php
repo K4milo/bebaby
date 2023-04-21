@@ -557,6 +557,7 @@ if ( ! class_exists( 'AWS_Helpers' ) ) :
                                     $synonym_words = explode( ' ', $synonym_item );
                                     if ( $synonym_words && ! empty( $synonym_words ) ) {
 
+                                        $synonym_words = array_filter($synonym_words);
                                         $str_array_keys = array_keys( $str_array );
                                         $synonym_prev_word_pos = 0;
                                         $use_this = true;
@@ -673,7 +674,9 @@ if ( ! class_exists( 'AWS_Helpers' ) ) :
             }
 
             foreach ( $options_to_reg as $key => $option ) {
-                icl_register_string( 'aws', $key, $params[$key] );
+                if ( isset( $params[$key] ) ) {
+                    icl_register_string( 'aws', $key, $params[$key] );
+                }
             }
 
         }
@@ -871,6 +874,7 @@ if ( ! class_exists( 'AWS_Helpers' ) ) :
         static public function page_filter_tax( $product_terms, $filter_terms, $operator = 'OR' ) {
 
             $skip = true;
+            $operator = strtoupper( $operator );
 
             if ( $filter_terms && is_array( $filter_terms ) && ! empty( $filter_terms ) ) {
 
@@ -920,6 +924,12 @@ if ( ! class_exists( 'AWS_Helpers' ) ) :
          */
         static public function get_index_options() {
 
+            $index_variations_option = AWS()->get_settings( 'index_variations' );
+            $index_sources_option = AWS()->get_settings( 'index_sources' );
+            $index_shortcodes_option = AWS()->get_settings( 'index_shortcodes' );
+
+            $index_shortcodes = $index_shortcodes_option && $index_shortcodes_option === 'false' ? false : true;
+
             /**
              * Apply or not WP filters to indexed content
              * @since 1.82
@@ -932,10 +942,7 @@ if ( ! class_exists( 'AWS_Helpers' ) ) :
              * @since 2.46
              * @param bool true
              */
-            $do_shortcodes = apply_filters( 'aws_index_do_shortcodes', true );
-
-            $index_variations_option = AWS()->get_settings( 'index_variations' );
-            $index_sources_option = AWS()->get_settings( 'index_sources' );
+            $do_shortcodes = apply_filters( 'aws_index_do_shortcodes', $index_shortcodes );
 
             $index_variations = $index_variations_option && $index_variations_option === 'false' ? false : true;
             $index_title = is_array( $index_sources_option ) && isset( $index_sources_option['title'] ) && ! $index_sources_option['title']  ? false : true;
@@ -964,6 +971,34 @@ if ( ! class_exists( 'AWS_Helpers' ) ) :
             );
 
             return $options;
+
+        }
+
+        /**
+         * Get array of relevance scores
+         * @return array $relevance_array
+         */
+        static public function get_relevance_scores( $data ) {
+
+            $relevance_array = array(
+                'title'   => 350,
+                'content' => 100,
+                'id'      => 300,
+                'sku'     => 300,
+                'other'   => 35
+            );
+
+            /**
+             * Change relevance scores for product search fields
+             * @since 2.53
+             * @param array $relevance_array Array of relevance scores
+             * @param array $data Array of search query related data
+             */
+            $relevance_array_filtered = apply_filters( 'aws_relevance_scores', $relevance_array, $data );
+
+            $relevance_array = shortcode_atts( $relevance_array, $relevance_array_filtered, 'aws_relevance_scores' );
+
+            return $relevance_array;
 
         }
 

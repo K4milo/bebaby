@@ -1,10 +1,6 @@
 <?php
 namespace WPO\WC\PDF_Invoices\Documents;
 
-use WPO\WC\PDF_Invoices\Compatibility\WC_Core as WCX;
-use WPO\WC\PDF_Invoices\Compatibility\Order as WCX_Order;
-use WPO\WC\PDF_Invoices\Compatibility\Product as WCX_Product;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
@@ -42,9 +38,9 @@ class Bulk_Document {
 	public $order_ids;
 
 	public function __construct( $document_type, $order_ids = array() ) {
-		$this->type = $document_type;
+		$this->type      = $document_type;
 		$this->order_ids = $order_ids;
-		$this->is_bulk = true;
+		$this->is_bulk   = true;
 	}
 
 	public function get_type() {
@@ -55,7 +51,7 @@ class Bulk_Document {
 		do_action( 'wpo_wcpdf_before_pdf', $this->get_type(), $this );
 
 		// temporarily apply filters that need to be removed again after the pdf is generated
-		$pdf_filters = apply_filters( 'wpo_wcpdf_pdf_filters', array() );
+		$pdf_filters = apply_filters( 'wpo_wcpdf_pdf_filters', array(), $this );
 		$this->add_filters( $pdf_filters );
 
 		$html = $this->get_html();
@@ -64,7 +60,7 @@ class Bulk_Document {
 			'paper_orientation'	=> apply_filters( 'wpo_wcpdf_paper_orientation', 'portrait', $this->get_type(), $this ),
 			'font_subsetting'	=> $this->wrapper_document->get_setting( 'font_subsetting', false ),
 		);
-		$pdf_maker = wcpdf_get_pdf_maker( $html, $pdf_settings );
+		$pdf_maker = wcpdf_get_pdf_maker( $html, $pdf_settings, $this );
 		$pdf = apply_filters( 'wpo_wcpdf_pdf_data', $pdf_maker->output(), $this );
 		
 		do_action( 'wpo_wcpdf_after_pdf', $this->get_type(), $this );
@@ -79,14 +75,14 @@ class Bulk_Document {
 		do_action( 'wpo_wcpdf_before_html', $this->get_type(), $this );
 
 		// temporarily apply filters that need to be removed again after the html is generated
-		$html_filters = apply_filters( 'wpo_wcpdf_html_filters', array() );
+		$html_filters = apply_filters( 'wpo_wcpdf_html_filters', array(), $this );
 		$this->add_filters( $html_filters );
 
 		$html_content = array();
 		foreach ( $this->order_ids as $key => $order_id ) {
 			do_action( 'wpo_wcpdf_process_template_order', $this->get_type(), $order_id );
 
-			$order = WCX::get_order( $order_id );
+			$order = wc_get_order( $order_id );
 
 			if ( $document = wcpdf_get_document( $this->get_type(), $order, true ) ) {
 				$html_content[ $key ] = $document->get_html( array( 'wrap_html_content' => false ) );

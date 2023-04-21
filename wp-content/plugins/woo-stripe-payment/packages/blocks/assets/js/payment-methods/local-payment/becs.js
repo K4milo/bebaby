@@ -7,6 +7,16 @@ import {AuBankAccountElement} from "@stripe/react-stripe-js";
 
 const getData = getSettings('stripe_becs_data');
 
+const BecsPaymentMethod = (props) => {
+    return (
+        <>
+            <PaymentMethod {...props} />
+            <div className={'wc-stripe-blocks-mandate becs-mandate'}
+                 dangerouslySetInnerHTML={{__html: props.getData('mandate')}}/>
+        </>
+    );
+}
+
 if (getData()) {
     registerPaymentMethod({
         name: getData('name'),
@@ -17,7 +27,7 @@ if (getData()) {
         ariaLabel: 'BECS',
         placeOrderButtonLabel: getData('placeOrderButtonLabel'),
         canMakePayment: canMakePayment(getData),
-        content: <PaymentMethod
+        content: <BecsPaymentMethod
             content={LocalPaymentIntentContent}
             getData={getData}
             confirmationMethod={'confirmAuBecsDebitPayment'}

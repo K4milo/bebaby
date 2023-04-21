@@ -173,7 +173,7 @@ $lqip_queue = $this->load_queue( 'lqip' );
 				<?php endif; ?>
 
 				<?php if ( $closest_server ) : ?>
-					<a href="<?php echo Utility::build_url( Router::ACTION_CLOUD, Cloud::TYPE_REDETECT_CLOUD, false, null, array( 'svc' => Cloud::SVC_LQIP ) ); ?>" data-balloon-pos="up" data-balloon-break aria-label='<?php echo sprintf( __( 'Current closest Cloud server is %s.&#10; Click to redetect.', 'litespeed-cache' ), $closest_server ); ?>' data-litespeed-cfm="<?php echo __( 'Are you sure you want to redetect the closest cloud server for this service?', 'litespeed-cache' ) ; ?>"><i class='litespeed-quic-icon'></i></a>
+					<a class="litespeed-redetect" href="<?php echo Utility::build_url( Router::ACTION_CLOUD, Cloud::TYPE_REDETECT_CLOUD, false, null, array( 'svc' => Cloud::SVC_LQIP ) ); ?>" data-balloon-pos="up" data-balloon-break aria-label='<?php echo sprintf( __( 'Current closest Cloud server is %s.&#10; Click to redetect.', 'litespeed-cache' ), $closest_server ); ?>' data-litespeed-cfm="<?php echo __( 'Are you sure you want to redetect the closest cloud server for this service?', 'litespeed-cache' ) ; ?>"><i class='litespeed-quic-icon'></i> <?php echo __( 'Redetect', 'litespeed-cache' ); ?></a>
 				<?php endif; ?>
 
 				<?php if ( ! empty( $lqip_queue ) ) : ?>
@@ -197,6 +197,7 @@ $lqip_queue = $this->load_queue( 'lqip' );
 					<a href="<?php echo Utility::build_url( Router::ACTION_PLACEHOLDER, Placeholder::TYPE_GENERATE ); ?>" class="button litespeed-btn-success">
 						<?php echo __( 'Run Queue Manually', 'litespeed-cache' ); ?>
 					</a>
+					<?php Doc::queue_issues(); ?>
 				<?php endif; ?>
 			</div>
 		</td>
@@ -226,7 +227,15 @@ $lqip_queue = $this->load_queue( 'lqip' );
 			<div class="litespeed-desc">
 				<?php echo __( 'Set an explicit width and height on image elements to reduce layout shifts and improve CLS (a Core Web Vitals metric).', 'litespeed-cache' ); ?>
 				<?php Doc::learn_more( 'https://web.dev/optimize-cls/#images-without-dimensions' ); ?>
-				<br /><?php echo sprintf( __( 'Note: this option only works when %1$s is %2$s.', 'litespeed-cache' ), '<code>' . Lang::title( Base::O_MEDIA_LAZY ) . '</code>', '<code>' . __( 'ON', 'litespeed-cache' ) . '</code>' ); ?>
+
+				<br /><font class="litespeed-warning litespeed-left10">
+					⚠️ <?php echo __( 'Notice', 'litespeed-cache' ); ?>: <?php echo sprintf( __( '%s must be turned ON for this setting to work.', 'litespeed-cache' ), '<code>' . Lang::title( Base::O_MEDIA_LAZY ) . '</code>' ); ?>
+				</font>
+
+				<br /><font class="litespeed-success">
+					<?php echo __( 'API', 'litespeed-cache' ); ?>:
+					<?php echo sprintf( __( 'Use %1$s to bypass remote image dimension check when %2$s is ON.', 'litespeed-cache' ), '<code>add_filter( "litespeed_media_ignore_remote_missing_sizes", "__return_true" );</code>', '<code>' . Lang::title( Base::O_MEDIA_ADD_MISSING_SIZES ) . '</code>' ); ?>
+				</font>
 			</div>
 		</td>
 	</tr>

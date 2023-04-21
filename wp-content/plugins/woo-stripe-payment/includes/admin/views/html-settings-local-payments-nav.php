@@ -1,6 +1,7 @@
 <?php
 global $current_section;
 $tabs = apply_filters( 'wc_stripe_local_gateways_tab', array() );
+ksort($tabs);
 ?>
 <div class="wc-stripe-advanced-settings-nav local-gateways">
 	<?php foreach ( $tabs as $id => $tab ) : ?>

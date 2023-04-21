@@ -2,37 +2,24 @@ import ButtonsToggleListener from '../Helper/ButtonsToggleListener';
 import Product from '../Entity/Product';
 import onApprove from '../OnApproveHandler/onApproveForContinue';
 import {payerData} from "../Helper/PayerData";
+import {PaymentMethods} from "../Helper/CheckoutMethodState";
 
 class SingleProductActionHandler {
 
     constructor(
         config,
         updateCart,
-        showButtonCallback,
-        hideButtonCallback,
         formElement,
         errorHandler
     ) {
         this.config = config;
         this.updateCart = updateCart;
-        this.showButtonCallback = showButtonCallback;
-        this.hideButtonCallback = hideButtonCallback;
         this.formElement = formElement;
         this.errorHandler = errorHandler;
     }
 
     configuration()
     {
-
-        if ( this.hasVariations() ) {
-            const observer = new ButtonsToggleListener(
-                this.formElement.querySelector('.single_add_to_cart_button'),
-                this.showButtonCallback,
-                this.hideButtonCallback
-            );
-            observer.init();
-        }
-
         return {
             createOrder: this.createOrder(),
             onApprove: onApprove(this, this.errorHandler),
@@ -79,11 +66,17 @@ class SingleProductActionHandler {
                     this.config.bn_codes[this.config.context] : '';
                 return fetch(this.config.ajax.create_order.endpoint, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         nonce: this.config.ajax.create_order.nonce,
                         purchase_units,
                         payer,
                         bn_code:bnCode,
+                        payment_method: PaymentMethods.PAYPAL,
+                        funding_source: window.ppcpFundingSource,
                         context:this.config.context
                     })
                 }).then(function (res) {

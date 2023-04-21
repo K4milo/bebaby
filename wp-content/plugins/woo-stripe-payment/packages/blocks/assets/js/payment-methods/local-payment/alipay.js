@@ -1,8 +1,7 @@
 import {registerPaymentMethod} from '@woocommerce/blocks-registry';
 import {getSettings} from "../util";
-import {LocalPaymentSourceContent} from './local-payment-method';
+import {canMakePayment, LocalPaymentIntentContent} from './local-payment-method';
 import {PaymentMethodLabel} from "../../components/checkout/payment-method-label";
-import {canMakePayment} from "./local-payment-method";
 import {PaymentMethod} from "../../components/checkout";
 
 const getData = getSettings('stripe_alipay_data');
@@ -18,10 +17,11 @@ if (getData()) {
         placeOrderButtonLabel: getData('placeOrderButtonLabel'),
         canMakePayment: canMakePayment(getData),
         content: <PaymentMethod
-            content={LocalPaymentSourceContent}
+            content={LocalPaymentIntentContent}
+            confirmationMethod={'confirmAlipayPayment'}
             getData={getData}/>,
         edit: <PaymentMethod
-            content={LocalPaymentSourceContent}
+            content={LocalPaymentIntentContent}
             getData={getData}/>,
         supports: {
             showSavedCards: false,

@@ -1,9 +1,10 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 /**
  *
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  * @package Stripe/Controllers
  *
  */
@@ -23,6 +24,15 @@ class WC_Stripe_Controller_Webhook extends WC_Stripe_Rest_Controller {
 				'permission_callback' => '__return_true'
 			)
 		);
+		register_rest_route(
+			$this->rest_uri(),
+			'webhook',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'handle_get_request' ),
+				'permission_callback' => '__return_true'
+			)
+		);
 	}
 
 	/**
@@ -30,15 +40,25 @@ class WC_Stripe_Controller_Webhook extends WC_Stripe_Rest_Controller {
 	 * @param WP_REST_Request $request
 	 */
 	public function webhook( $request ) {
-		$payload      = $request->get_body();
-		$json_payload = json_decode( $payload, true );
-		$mode         = $json_payload['livemode'] == true ? 'live' : 'test';
-		$this->secret = stripe_wc()->api_settings->get_option( 'webhook_secret_' . $mode );
-		$header       = isset( $_SERVER['HTTP_STRIPE_SIGNATURE'] ) ? $_SERVER['HTTP_STRIPE_SIGNATURE'] : '';
+		$payload         = $request->get_body();
+		$json_payload    = json_decode( $payload, true );
+		$webhook_id_live = stripe_wc()->api_settings->get_option( 'webhook_id_live' );
+		$webhook_id_test = stripe_wc()->api_settings->get_option( 'webhook_id_test' );
+		$header          = isset( $_SERVER['HTTP_STRIPE_SIGNATURE'] ) ? $_SERVER['HTTP_STRIPE_SIGNATURE'] : '';
 		try {
+			if ( ! $json_payload ) {
+				throw new Exception( 'Invalid request payload.' );
+			}
+			$mode         = $json_payload['livemode'] == true ? 'live' : 'test';
+			$webhook_id   = "webhook_id_${mode}";
+			$this->secret = stripe_wc()->api_settings->get_option( 'webhook_secret_' . $mode );
+			// if the webhook ID exists and doesn't match the ID from the notification, then don't process. This will
+			// happen if the Stripe account has multiple webhooks configured.
+			if ( $$webhook_id && isset( $json_payload['data']['object']['metadata']['webhook_id'] ) && $$webhook_id !== $json_payload['data']['object']['metadata']['webhook_id'] ) {
+				return rest_ensure_response( array() );
+			}
 			$event = \Stripe\Webhook::constructEvent( $payload, $header, $this->secret, apply_filters( 'wc_stripe_webhook_signature_tolerance', 600 ) );
-			// $event = \Stripe\StripeObject::constructFrom(json_decode($payload, true));
-			wc_stripe_log_info( sprintf( 'Webhook notification received: Event: %s. Payload: %s', $event->type, print_r( $payload, true ) ) );
+			wc_stripe_log_info( sprintf( 'Webhook notification received: Event: %s', $event->type ) );
 			$type = $event->type;
 			$type = str_replace( '.', '_', $type );
 
@@ -60,4 +80,16 @@ class WC_Stripe_Controller_Webhook extends WC_Stripe_Rest_Controller {
 	private function send_error_response( $message, $code = 400 ) {
 		return new WP_Error( 'webhook-error', $message, array( 'status' => $code ) );
 	}
+
+	/**
+	 * @param \WP_REST_Request $request
+	 *
+	 * @return void
+	 */
+	public function handle_get_request( $request ) {
+		return rest_ensure_response( [
+			'message' => __( 'Stripe sends webhook notifications via the http POST method. You cannot test the webhook using a browser.', 'woo-stripe-payment' )
+		] );
+	}
+
 }

@@ -11,7 +11,7 @@ namespace PaymentPlugins\Blocks\Stripe\Payments;
 abstract class AbstractStripeLocalPayment extends AbstractStripePayment {
 
 	public function get_payment_method_script_handles() {
-		if ( ! wp_script_is( 'wc-stripe-local-payment', 'registered' ) && ! is_checkout() ) {
+		if ( ! wp_script_is( 'wc-stripe-block-local-payment', 'registered' ) && ! is_checkout() ) {
 			$this->assets_api->register_script( 'wc-stripe-block-local-payment', 'build/wc-stripe-local-payment.js' );
 		}
 
@@ -25,7 +25,7 @@ abstract class AbstractStripeLocalPayment extends AbstractStripePayment {
 			'description'           => $this->payment_method->get_description(),
 			'icon'                  => $this->get_payment_method_icon(),
 			'features'              => $this->get_supported_features(),
-			'placeOrderButtonLabel' => $this->payment_method->order_button_text,
+			'placeOrderButtonLabel' => \esc_html( $this->payment_method->order_button_text ),
 			'allowedCountries'      => $this->payment_method->get_option( 'allowed_countries' ),
 			'exceptCountries'       => $this->payment_method->get_option( 'except_countries', array() ),
 			'specificCountries'     => $this->payment_method->get_option( 'specific_countries', array() ),

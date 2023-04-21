@@ -43,6 +43,10 @@ if (!class_exists('AWS_FacetWP')) :
          */
         public function __construct() {
 
+            if ( apply_filters( 'aws_disable_facetwp_integration', false ) ) {
+                return;
+            }
+
             add_filter( 'facetwp_pre_filtered_post_ids', array( $this, 'facetwp_pre_filtered_post_ids' ), 10, 2 );
             add_filter( 'facetwp_filtered_post_ids', array( $this, 'facetwp_filtered_post_ids' ), 1 );
             add_filter( 'aws_searchpage_enabled', array( $this, 'aws_searchpage_enabled' ), 1 );
@@ -56,14 +60,20 @@ if (!class_exists('AWS_FacetWP')) :
          */
         public function facetwp_pre_filtered_post_ids( $post_ids, $obj ) {
             if ( class_exists( 'AWS_Search_Page' ) && isset( $_GET['type_aws'] ) && isset( $_GET['s'] ) ) {
-                $search_res = AWS_Search_Page::factory()->search( $obj->query, $obj->query_args['posts_per_page'], $obj->query_args['paged'] );
+
+                global $wp_query;
+                $posts_per_page = $obj && $obj->query_args && isset( $obj->query_args['posts_per_page'] ) ? $obj->query_args['posts_per_page'] : $wp_query->query_vars['posts_per_page'];
+                $paged = $obj && $obj->query_args && isset( $obj->query_args['paged'] ) ? $obj->query_args['paged'] : $wp_query->query_vars['paged'];
+                $search_res = AWS_Search_Page::factory()->search( $obj->query, $posts_per_page, $paged );
+
                 if ( $search_res ) {
                     $products_ids = array();
-                    foreach ( $search_res['all'] as $product ) {
+                    foreach ( $search_res['products'] as $product ) {
                         $products_ids[] = $product['id'];
                     }
                     $post_ids = $products_ids;
                 }
+
             }
             return $post_ids;
         }

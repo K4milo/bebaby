@@ -8,6 +8,7 @@ defined( 'ABSPATH' ) || exit();
 add_action( 'woocommerce_payment_token_deleted', 'wc_stripe_woocommerce_payment_token_deleted', 10, 2 );
 add_action( 'woocommerce_order_status_cancelled', 'wc_stripe_order_cancelled', 10, 2 );
 add_action( 'woocommerce_order_status_completed', 'wc_stripe_order_status_completed', 10, 2 );
+add_action( 'woocommerce_order_status_processing', 'wc_stripe_order_status_completed', 10, 2 );
 add_action( 'wc_stripe_remove_order_locks', 'wc_stripe_remove_order_locks' );
 add_action( 'wc_stripe_retry_source_chargeable', 'wc_stripe_retry_source_chargeable' );
 
@@ -17,7 +18,9 @@ add_action( 'wc_stripe_retry_source_chargeable', 'wc_stripe_retry_source_chargea
 add_action( 'wc_stripe_webhook_source_chargeable', 'wc_stripe_process_source_chargeable', 10, 2 );
 add_action( 'wc_stripe_webhook_charge_succeeded', 'wc_stripe_process_charge_succeeded', 10, 2 );
 add_action( 'wc_stripe_webhook_charge_failed', 'wc_stripe_process_charge_failed', 10, 2 );
+add_action( 'wc_stripe_webhook_charge_pending', 'wc_stripe_process_charge_pending', 10, 1 );
 add_action( 'wc_stripe_webhook_payment_intent_succeeded', 'wc_stripe_process_payment_intent_succeeded', 10, 2 );
+add_action( 'wc_stripe_webhook_payment_intent_requires_action', 'wc_stripe_process_requires_action', 10, 1 );
 add_action( 'wc_stripe_webhook_charge_refunded', 'wc_stripe_process_create_refund' );
 add_action( 'wc_stripe_webhook_charge_dispute_created', 'wc_stripe_charge_dispute_created', 10, 1 );
 add_action( 'wc_stripe_webhook_charge_dispute_closed', 'wc_stripe_charge_dispute_closed', 10, 1 );

@@ -1,4 +1,5 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
@@ -8,12 +9,14 @@ if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
 /**
  *
  * @package Stripe/Gateways
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  *
  */
 class WC_Payment_Gateway_Stripe_Alipay extends WC_Payment_Gateway_Stripe_Local_Payment {
 
-	use WC_Stripe_Local_Payment_Charge_Trait;
+	use WC_Stripe_Local_Payment_Intent_Trait;
+
+	protected $payment_method_type = 'alipay';
 
 	public function __construct() {
 		$this->local_payment_type = 'alipay';
@@ -42,17 +45,24 @@ class WC_Payment_Gateway_Stripe_Alipay extends WC_Payment_Gateway_Stripe_Local_P
 	public function validate_local_payment_available( $currency, $billing_country ) {
 		$country          = stripe_wc()->account_settings->get_option( 'country' );
 		$default_currency = stripe_wc()->account_settings->get_option( 'default_currency' );
-
-		// https://stripe.com/docs/sources/alipay#create-source
+		if ( empty( $country ) && wc_stripe_mode() === 'test' ) {
+			$country          = wc_get_base_location()['country'];
+			$default_currency = $currency;
+		}
+		// https://stripe.com/docs/payments/alipay/accept-a-payment?platform=web#supported-currencies
 		// Currency must be one of the allowed values
 		if ( in_array( $currency, $this->currencies ) ) {
-			// If merchant's country is DK, NO, SE, or CH, currency must be EUR.
-			if ( in_array( $country, array( 'DK', 'NO', 'SE', 'CH' ) ) ) {
+			// If CNY, it doesn't matter what the billing or default country is.
+			if ( $currency === 'CNY' ) {
+				return true;
+			}
+			// If merchant's country is any of the following, currency must be EUR
+			if ( in_array( $country, array( 'AT', 'BE', 'BG', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'NO', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'CH' ) ) ) {
 				return $currency === 'EUR';
 			} else {
-				// For all other countries, Ali pay is available if currency is CNY or
-				// currency matches merchant's default currency
-				return $currency === 'CNY' || $currency === $default_currency;
+				// For all other countries, Alipay is available if the currency matches the
+				// Stripe account default currency
+				return $currency === $default_currency;
 			}
 		}
 
@@ -63,5 +73,6 @@ class WC_Payment_Gateway_Stripe_Alipay extends WC_Payment_Gateway_Stripe_Local_P
 		return __( 'Gateway will appear when store currency is CNY, or currency matches merchant\'s 
 					default Stripe currency. For merchants located in DK, NO, SE, & CH, currency must be EUR.', 'woo-stripe-payment' );
 	}
+
 }
 

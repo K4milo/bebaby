@@ -762,6 +762,12 @@ msgstr ""
 msgid "Index or not content of product variations."
 msgstr ""
 
+msgid "Run shortcodes"
+msgstr ""
+
+msgid "Execute or not any shortcodes inside product content."
+msgstr ""
+
 msgid "Search results page"
 msgstr ""
 
@@ -814,4 +820,16 @@ msgid "View Pricing"
 msgstr ""
 
 msgid "Dismiss"
+msgstr ""
+
+msgid "Products number"
+msgstr ""
+
+msgid "Maximum number of displayed products search results."
+msgstr ""
+
+msgid "Archive pages number"
+msgstr ""
+
+msgid "Maximum number of displayed archive pages search results."
 msgstr ""

@@ -4,7 +4,7 @@ $review_url = 'https://wordpress.org/support/plugin/woocommerce-pdf-invoices-pac
 $review_link = sprintf( '<a href="%s">★★★★★</a>', $review_url );
 $review_invitation = sprintf(
 	/* translators: ★★★★★ (5-star) */
-	__( 'If you like <strong>WooCommerce PDF Invoices & Packing Slips</strong> please leave us a %s rating. A huge thank you in advance!', 'woocommerce-pdf-invoices-packing-slips' ),
+	__( 'If you like <strong>PDF Invoices & Packing Slips for WooCommerce</strong> please leave us a %s rating. A huge thank you in advance!', 'woocommerce-pdf-invoices-packing-slips' ),
 	$review_link
 );
 ?>
@@ -15,7 +15,7 @@ $review_invitation = sprintf(
 </script>
 <div class="wrap">
 	<div class="icon32" id="icon-options-general"><br /></div>
-	<h2><?php esc_html_e( 'WooCommerce PDF Invoices', 'woocommerce-pdf-invoices-packing-slips' ); ?></h2>
+	<h2><?php esc_html_e( 'PDF Invoices & Packing Slips for WooCommerce', 'woocommerce-pdf-invoices-packing-slips' ); ?></h2>
 	<h2 class="nav-tab-wrapper">
 	<?php
 	foreach ( $settings_tabs as $tab_slug => $tab_data ) {
@@ -30,9 +30,15 @@ $review_invitation = sprintf(
 	do_action( 'wpo_wcpdf_before_settings_page', $active_tab, $active_section );
 
 	// save or check option to hide extensions ad
-	if ( isset( $_GET['wpo_wcpdf_hide_extensions_ad'] ) ) {
-		update_option( 'wpo_wcpdf_hide_extensions_ad', true );
-		$hide_ad = true;
+	if ( isset( $_REQUEST['wpo_wcpdf_hide_extensions_ad'] ) && isset( $_REQUEST['_wpnonce'] ) ) {
+		// validate nonce
+		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'hide_extensions_ad_nonce' ) ) {
+			wcpdf_log_error( 'You do not have sufficient permissions to perform this action: wpo_wcpdf_hide_extensions_ad' );
+			$hide_ad = false;
+		} else {
+			update_option( 'wpo_wcpdf_hide_extensions_ad', true );
+			$hide_ad = true;
+		}
 	} else {
 		$hide_ad = get_option( 'wpo_wcpdf_hide_extensions_ad' );
 	}
@@ -44,10 +50,10 @@ $review_invitation = sprintf(
 	$preview_states = isset( $settings_tabs[$active_tab]['preview_states'] ) ? $settings_tabs[$active_tab]['preview_states'] : 1;
 	$preview_states_lock = $preview_states == 3 ? false : true;
 	?>
-	<div id="wpo-wcpdf-preview-wrapper" data-preview-states="<?php echo $preview_states; ?>" data-preview-state="closed" data-from-preview-state="" data-preview-states-lock="<?php echo $preview_states_lock; ?>">
+	<div id="wpo-wcpdf-preview-wrapper" data-preview-states="<?php echo esc_attr( $preview_states ); ?>" data-preview-state="closed" data-from-preview-state="" data-preview-states-lock="<?php echo esc_attr( $preview_states_lock ); ?>">
 
 		<div class="sidebar">
-			<form method="post" action="options.php" id="wpo-wcpdf-settings" class="<?php echo "{$active_tab} {$active_section}"; ?>">
+			<form method="post" action="options.php" id="wpo-wcpdf-settings" class="<?php echo esc_attr( "{$active_tab} {$active_section}" ); ?>">
 				<?php
 					do_action( 'wpo_wcpdf_before_settings', $active_tab, $active_section );
 					if ( has_action( 'wpo_wcpdf_settings_output_'.$active_tab ) ) {
@@ -66,8 +72,8 @@ $review_invitation = sprintf(
 		</div>
 
 		<div class="gutter">
-			<div class="slider slide-left">&#9664;</div>
-			<div class="slider slide-right">&#9654;</div>
+			<div class="slider slide-left"><span class="gutter-arrow arrow-left"></span></div>
+			<div class="slider slide-right"><span class="gutter-arrow arrow-right"></span></div>
 		</div>
 
 		<div class="preview-document">
@@ -82,6 +88,7 @@ $review_invitation = sprintf(
 				}
 			?>
 			<div class="preview-data-wrapper">
+				<div class="save-settings"><?php submit_button(); ?></div>
 				<div class="preview-data preview-order-data">
 					<div class="preview-order-search-wrapper">
 						<input type="text" name="preview-order-search" id="preview-order-search" placeholder="<?php esc_html_e( 'ID, email or name', 'woocommerce-pdf-invoices-packing-slips' ); ?>" data-nonce="<?= wp_create_nonce( 'wpo_wcpdf_preview' ); ?>">
@@ -100,7 +107,7 @@ $review_invitation = sprintf(
 					<?php
 						if ( $document_type ) {
 							$document = WPO_WCPDF()->documents->get_document( sanitize_text_field( $document_type ), null );
-							echo '<p class="current"><span class="current-label">'.$document->get_title().'</span><span class="arrow-down">&#9660;</span></p>';
+							echo '<p class="current"><span class="current-label">'.esc_html( $document->get_title() ).'</span><span class="arrow-down">&#9660;</span></p>';
 						} else {
 							echo '<p class="current"><span class="current-label">'.__( 'Invoice', 'woocommerce-pdf-invoices-packing-slips' ).'</span><span class="arrow-down">&#9660;</span></p>';
 						}
@@ -116,10 +123,10 @@ $review_invitation = sprintf(
 				</div>
 				<?php endif; ?>
 			</div>
-			<input type="hidden" name="document_type" data-default="<?= $document_type; ?>" value="<?= $document_type; ?>">
+			<input type="hidden" name="document_type" data-default="<?php esc_attr_e( $document_type ); ?>" value="<?php esc_attr_e( $document_type ); ?>">
 			<input type="hidden" name="order_id" value="">
-			<input type="hidden" name="nonce" value="<?= wp_create_nonce( 'wpo_wcpdf_preview' ); ?>">
-			<script src="<?= WPO_WCPDF()->plugin_url() ?>/assets/js/pdf_js/pdf.js"></script>
+			<input type="hidden" name="nonce" value="<?php echo wp_create_nonce( 'wpo_wcpdf_preview' ); ?>">
+			<script src="<?php echo WPO_WCPDF()->plugin_url() ?>/assets/js/pdf_js/pdf.js"></script>
 			<div class="preview"></div>
 		</div>
 

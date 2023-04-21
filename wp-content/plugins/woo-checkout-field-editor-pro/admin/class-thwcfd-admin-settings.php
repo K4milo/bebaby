@@ -25,7 +25,7 @@ abstract class THWCFD_Admin_Settings{
 			'advanced_settings' => __('Advanced Settings', 'woo-checkout-field-editor-pro'),
 			'pro' => __('Premium Features', 'woo-checkout-field-editor-pro'),
 			'themehigh_plugins' => __('Other Free Plugins', 'woo-checkout-field-editor-pro'),
-		);
+		);		
 	}
 	
 	public function get_tabs(){
@@ -174,7 +174,7 @@ abstract class THWCFD_Admin_Settings{
 					}
 					?>
 				</td>
-				<?php $this->render_form_fragment_tooltip($tooltip); ?>
+				<?php $this->render_form_element_tooltip($tooltip); ?>
 				<td <?php echo $input_cell_props ?> ><?php echo $field_html; ?></td>
 				<?php
 			}else{

@@ -29,13 +29,13 @@
          */
         PaymentRequest.prototype.canMakePayment = function () {
             wc_stripe.PaymentRequest.prototype.canMakePayment.apply(this, arguments).then(function () {
-                $(document.body).on('change', '[name="quantity"]', this.add_to_cart.bind(this));
+                $(document.body).on('change', '[name="quantity"]', this.maybe_calculate_cart.bind(this));
                 $(this.container).parent().parent().addClass('active');
                 if (!this.is_variable_product()) {
                     this.cart_calculation();
                 } else {
                     if (this.variable_product_selected()) {
-                        this.cart_calculation(this.get_product_data().variation.variation_id);
+                        this.cart_calculation();
                         $(this.container).removeClass('processingFoundVariation');
                     } else {
                         this.disable_payment_button();
@@ -47,18 +47,17 @@
         /**
          * [add_to_cart description]
          */
-        PaymentRequest.prototype.add_to_cart = function (e) {
+        PaymentRequest.prototype.maybe_calculate_cart = function (e) {
             this.disable_payment_button();
             this.old_qty = this.get_quantity();
             var variation = this.get_product_data().variation;
             if (!this.is_variable_product() || this.variable_product_selected()) {
-                this.cart_calculation(variation.variation_id).then(function () {
-                    if (this.is_variable_product() && $(this.container).is('.processingFoundVariation')) {
+                this.cart_calculation().then(function () {
+                    if (this.is_variable_product()) {
                         this.createPaymentRequest();
                         this.createPaymentRequestButton();
                         wc_stripe.PaymentRequest.prototype.canMakePayment.apply(this, arguments).then(function () {
                             this.enable_payment_button();
-                            $(this.container).removeClass('processingFoundVariation');
                         }.bind(this));
                     } else {
                         this.enable_payment_button();
@@ -68,7 +67,8 @@
         }
 
         PaymentRequest.prototype.cart_calculation = function () {
-            return wc_stripe.ProductGateway.prototype.cart_calculation.apply(this, arguments).then(function () {
+            return wc_stripe.ProductGateway.prototype.cart_calculation.apply(this, arguments).then(function (data) {
+                this.update_from_cart_calculation(data);
                 this.paymentRequest.update(this.get_payment_request_update({
                     total: {
                         pending: false
@@ -91,12 +91,18 @@
             } else if (this.get_quantity() == 0) {
                 e.preventDefault();
                 this.submit_error(this.params.messages.invalid_amount);
+            } else {
+                if (!this.needs_shipping()) {
+                    this.add_to_cart();
+                }
             }
         }
 
         PaymentRequest.prototype.found_variation = function () {
-            $(this.container).addClass('processingFoundVariation');
             wc_stripe.ProductGateway.prototype.found_variation.apply(this, arguments);
+            if (this.can_pay) {
+                this.maybe_calculate_cart();
+            }
         }
 
         /**
@@ -197,7 +203,7 @@
                 this.show_icons();
                 if (this.banner_enabled()) {
                     $(this.banner_container).empty().show().append('<div id="wc-stripe-payment-request-banner"></div>');
-                    $(this.banner_container).show().parent().parent().addClass('active');
+                    $(this.banner_container).show().addClass('active').closest('.wc-stripe-banner-checkout').addClass('active');
                     var elements = this.stripe.elements();
                     var button = elements.create("paymentRequestButton", {
                         paymentRequest: this.paymentRequest,
@@ -257,7 +263,7 @@
                 this.maybe_set_ship_to_different();
             }
             if (this.checkout_fields_valid()) {
-                this.get_form().submit();
+                this.get_form().trigger('submit');
             }
         }
 

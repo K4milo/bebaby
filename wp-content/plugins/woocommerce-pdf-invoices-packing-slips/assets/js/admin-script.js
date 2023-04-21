@@ -17,12 +17,20 @@ jQuery( function( $ ) {
 	$( '.save-next-number' ).on( 'click', function( event ) {
 		$input = $( this ).siblings( 'input' );
 		$input.addClass( 'ajax-waiting' );
+		let number = $input.val();
+		
+		if ( number.length > 0 && number > 2147483647 ) {
+			alert( wpo_wcpdf_admin.mysql_int_size_limit );
+			$input.removeClass( 'ajax-waiting' );
+			return;
+		}
+		
 
 		let data = {
 			security: $input.data( 'nonce' ),
 			action:   'wpo_wcpdf_set_next_number',
 			store:    $input.data( 'store' ),
-			number:   $input.val(), 
+			number:   number, 
 		};
 
 		xhr = $.ajax( {
@@ -51,9 +59,51 @@ jQuery( function( $ ) {
 		$( this ).parent().find( 'ul' ).toggleClass( 'active' );
 	} );
 
+	// Add admin pointers
+	$.each( wpo_wcpdf_admin.pointers, function( key, pointer ) {
+
+		$( pointer.target ).pointer( 
+			{
+				content: pointer.content,
+	
+				position:
+					{
+						edge:  pointer.position.edge,
+						align: pointer.position.align
+					},
+	
+				pointerClass: pointer.pointer_class,
+	
+				pointerWidth: pointer.pointer_width,
+	
+				close: function() {
+					jQuery.post(
+						wpo_wcpdf_admin.ajaxurl,
+						{
+							pointer: key,
+							action:  'dismiss-wp-pointer',
+						}
+					);
+				},
+			}
+		);
+
+		// Check if pointer was dismissed
+		if ( $.inArray( key, wpo_wcpdf_admin.dismissed_pointers.split(',') ) === -1 ) {
+			$( pointer.target ).pointer('open');
+		}
+
+	});
+
+	// enable WooCommerce help tips
+	$( '.woocommerce-help-tip' ).tipTip( {
+		'attribute': 'data-tip',
+		'fadeIn':    50,
+		'fadeOut':   50,
+		'delay':     200
+	} );
 
 	//----------> Preview <----------//
-
 	// objects
 	let $previewWrapper           = $( '#wpo-wcpdf-preview-wrapper' );
 	let $preview                  = $( '#wpo-wcpdf-preview-wrapper .preview' );
@@ -93,16 +143,11 @@ jQuery( function( $ ) {
 	$( window ).on( 'resize', determinePreviewStates );
 		
 	function determinePreviewStates() {
-
-		// console.log(previousWindowWidth);
-		// console.log('Now: ' + $(this).width() );
-
 		// Check if preview states are allowed to change based on screen size
 		if ( $previewWrapper.attr( 'data-preview-states-lock') == false ) {
 
 			// On small screens: 2 preview states and close preview
 			if ( $(this).width() <= 1200 && ( previousWindowWidth > 1200 || $(this).width() == previousWindowWidth ) ) {
-				// console.log('Slide!');
 				if ( $previewWrapper.attr( 'data-preview-state') == 'full' ) {
 					$previewWrapper.find( '.preview-document' ).show();
 					$previewWrapper.find( '.sidebar' ).hide();
@@ -247,46 +292,15 @@ jQuery( function( $ ) {
 	// Preview on page load
 	$( document ).ready( triggerPreview() );
 
-	// Preview on user input
-	$( document ).on( 'keyup paste', '#wpo-wcpdf-settings input:not([type=checkbox]), #wpo-wcpdf-settings textarea, #wpo-wcpdf-settings select:not(.dropdown-add-field)', function( event ) {
-		if ( ! settingIsExcludedForPreview( $( this ).attr( 'name' ) ) ) {
-			let duration  = event.type == 'keyup' ? 1000 : 0; 
-			triggerPreview( duration );
-		}
-	} );
+	// Custom trigger to signify settings have changed (will show save button and refresh preview)
+	$( document ).on( 'wpo-wcpdf-settings-changed', function( event, delay ) { 
+		showSaveBtn();
+		triggerPreview( delay );
+	} ); 
 
-	// Preview on user selected option (using 'change' event breaks the PDF render)
-	$( document ).on( 'click', '#wpo-wcpdf-settings select:not(.dropdown-add-field) option', function( event ) {
-		if ( ! settingIsExcludedForPreview( $( this ).parent().attr( 'name' ) ) ) {
-			triggerPreview();
-		}
-	} );
-
-	// Preview on user checkbox change
-	$( document ).on( 'change', '#wpo-wcpdf-settings input[type="checkbox"]', function( event ) {
-		if ( ! settingIsExcludedForPreview( $( this ).attr( 'name' ) ) ) {
-			triggerPreview( 1000 );
-		}
-	} );
-
-	// Preview on select / radio setting change
-	$( document ).on( 'change', '#wpo-wcpdf-settings input[type="radio"], #wpo-wcpdf-settings select', function( event ) {
-		if ( ! settingIsExcludedForPreview( $( this ).attr( 'name' ) ) ) {
-			triggerPreview();
-		}
-	} );
-
-	// Preview on header logo change
-	$( document.body ).on( 'wpo-wcpdf-media-upload-setting-updated', function( event, $input ) {
-		triggerPreview();
-	} );
-	$( document ).on( 'click', '.wpo_remove_image_button', function( event ) {
-		triggerPreview();
-	} );
-
-	// Custom trigger
-	$( document ).on( 'wpo_wcpdf_refresh_preview', function( event, duration ) {
-		triggerPreview( duration );
+	// Custom trigger to refresh preview
+	$( document ).on( 'wpo-wcpdf-refresh-preview wpo_wcpdf_refresh_preview', function( event, delay ) {
+		triggerPreview( delay );
 	} );
 
 	// Preview on user click in search result
@@ -299,8 +313,56 @@ jQuery( function( $ ) {
 		triggerPreview();
 	} );
 
+	// Check for settings change
+	$( document ).on( 'keyup paste', '#wpo-wcpdf-settings input, #wpo-wcpdf-settings textarea', settingsChanged );
+	$( document ).on( 'change', '#wpo-wcpdf-settings input[type="checkbox"], #wpo-wcpdf-settings input[type="radio"], #wpo-wcpdf-settings select', function( event ) {
+		if ( ! event.isTrigger ) { // exclude programmatic triggers that aren't actually changing anything
+			settingsChanged( event );
+		}
+	});
+	$( document ).on( 'select2:select select2:unselect', '#wpo-wcpdf-settings select.wc-enhanced-select', settingsChanged );
+	$( document.body ).on( 'wpo-wcpdf-media-upload-setting-updated', settingsChanged );
+	$( document ).on( 'click', '.wpo_remove_image_button, #wpo-wcpdf-settings .remove-requirement', settingsChanged );
+	
+	function settingsChanged( event, previewDelay ) {
+
+		// Show secondary save button
+		showSaveBtn();
+
+		// Check if preview needs to reload and with what delay
+		let $element = $( event.target );
+
+		if ( ! settingIsExcludedForPreview( $element.attr('name') ) ) {
+
+			if ( $element.hasClass( 'remove-requirement' ) || $element.attr('id') == 'disable_for' ) {
+				return;
+			}
+
+			if ( jQuery.inArray( event.type, ['keyup', 'paste'] ) !== -1 ) {
+				if ( $element.is( 'input[type="checkbox"], select' ) ) {
+					return;
+				} else {
+					previewDelay = event.type == 'keyup' ? 1000 : 0; 
+				}
+			}
+
+			triggerPreview( previewDelay );
+		}
+	}
+
+	function showSaveBtn( event ) {
+		$('.preview-data-wrapper .save-settings p').css('margin-right', '0');
+	}
+
+	// Submit settings form when clicking on secondary save button
+	$( document ).on( 'click', '.preview-data-wrapper .save-settings p input', function( event ) {
+		$('#wpo-wcpdf-settings input#submit').click();
+	} );
+
 	// Trigger the Preview
 	function triggerPreview( timeoutDuration ) {
+		timeoutDuration = typeof timeoutDuration == 'number' ? timeoutDuration : 0;
+
 		loadPreviewData();
 		clearTimeout( previewTimeout );
 		previewTimeout = setTimeout( function() { ajaxLoadPreview() }, timeoutDuration );
@@ -424,13 +486,9 @@ jQuery( function( $ ) {
 		// Using DocumentInitParameters object to load binary data.
 		let loadingTask = pdfjsLib.getDocument( { data: pdfData } );
 		loadingTask.promise.then( function( pdf ) {
-			console.log( 'PDF loaded' );
-			
 			// Fetch the first page
 			let pageNumber = 1;
 			pdf.getPage( pageNumber ).then( function( page ) {
-				console.log( 'Page loaded' );
-				
 				let scale     = 2;
 				let viewport  = page.getViewport( { scale: scale } );
 
@@ -448,7 +506,7 @@ jQuery( function( $ ) {
 				};
 				let renderTask = page.render( renderContext );
 				renderTask.promise.then( function() {
-					console.log( 'Page rendered' );
+					// page rendered
 				} );
 			} );
 		}, function( reason ) {

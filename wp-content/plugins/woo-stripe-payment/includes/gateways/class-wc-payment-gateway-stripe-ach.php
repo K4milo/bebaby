@@ -1,35 +1,32 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 /**
  * Gateway that processes ACH payments.
  * Only available for U.S. based merchants at this time.
  *
- * @since 3.0.5
- * @author Payment Plugins
+ * @since   3.0.5
+ * @author  Payment Plugins
  * @package Stripe/Gateways
  *
  */
 class WC_Payment_Gateway_Stripe_ACH extends WC_Payment_Gateway_Stripe {
 
-	use WC_Stripe_Payment_Charge_Trait;
+	use WC_Stripe_Payment_Intent_Trait;
 
-	/**
-	 *
-	 * @var object
-	 */
-	public $metadata_key = '';
+	protected $payment_method_type = 'us_bank_account';
+
+	public $synchronous = false;
 
 	public function __construct() {
-		$this->synchronous        = false;
 		$this->id                 = 'stripe_ach';
 		$this->tab_title          = __( 'ACH', 'woo-stripe-payment' );
-		$this->template_name      = 'ach.php';
+		$this->template_name      = 'ach-connections.php';
 		$this->token_type         = 'Stripe_ACH';
 		$this->method_title       = __( 'Stripe ACH', 'woo-stripe-payment' );
 		$this->method_description = __( 'ACH gateway that integrates with your Stripe account.', 'woo-stripe-payment' );
 		$this->icon               = stripe_wc()->assets_url( 'img/ach.svg' );
-		$this->metadata_key       = $this->id . '_metadata';
 		parent::__construct();
 		$this->settings['charge_type'] = 'capture';
 		$this->order_button_text       = $this->get_option( 'order_button_text' );
@@ -37,6 +34,11 @@ class WC_Payment_Gateway_Stripe_ACH extends WC_Payment_Gateway_Stripe {
 
 	public static function init() {
 		add_action( 'woocommerce_checkout_update_order_review', array( __CLASS__, 'update_order_review' ) );
+		add_action( 'woocommerce_checkout_process', array( __CLASS__, 'add_fees_for_checkout' ) );
+	}
+
+	public function get_confirmation_method( $order = null ) {
+		return 'automatic';
 	}
 
 	/**
@@ -51,7 +53,9 @@ class WC_Payment_Gateway_Stripe_ACH extends WC_Payment_Gateway_Stripe {
 		if ( isset( $wp->query_vars['order-pay'] ) ) {
 			$order = wc_get_order( absint( $wp->query_vars['order-pay'] ) );
 
-			return $is_available && $order->get_currency() === 'USD';
+			return $is_available && $order && $order->get_currency() === 'USD';
+		} elseif ( $this->is_change_payment_method_request() ) {
+			return $is_available;
 		}
 
 		return $is_available && get_woocommerce_currency() === 'USD';
@@ -75,172 +79,16 @@ class WC_Payment_Gateway_Stripe_ACH extends WC_Payment_Gateway_Stripe {
 	 * @see WC_Payment_Gateway_Stripe::enqueue_checkout_scripts()
 	 */
 	public function enqueue_checkout_scripts( $scripts ) {
-		$scripts->register_script( 'plaid', 'https://cdn.plaid.com/link/v2/stable/link-initialize.js', array(), null );
 		$scripts->enqueue_script(
-			'ach',
-			$scripts->assets_url( 'js/frontend/ach-payments.js' ),
+			'ach-connections',
+			$scripts->assets_url( 'build/ach-connections.js' ),
 			array(
 				$scripts->get_handle( 'external' ),
 				$scripts->get_handle( 'wc-stripe' ),
-				$scripts->get_handle( 'plaid' ),
+				'wp-polyfill'
 			)
 		);
-		$scripts->localize_script( 'ach', $this->get_localized_params() );
-	}
-
-	public function get_localized_params() {
-		return array_merge_recursive(
-			parent::get_localized_params(),
-			array(
-				'env'          => $this->get_plaid_environment(),
-				'client_name'  => $this->get_option( 'client_name' ),
-				'fees_enabled' => $this->fees_enabled(),
-				'routes'       => array(
-					'link_token' => WC_Stripe_Rest_API::get_endpoint( stripe_wc()->rest_api->plaid->rest_uri( 'link-token' ) )
-				)
-			)
-		);
-	}
-
-	/**
-	 *
-	 * {@inheritDoc}
-	 *
-	 * @see WC_Payment_Gateway_Stripe_Charge::process_payment()
-	 */
-	public function process_payment( $order_id ) {
-		// generate the access token first.
-		if ( ! $this->use_saved_source() ) {
-			try {
-				$result = $this->fetch_access_token( $this->get_public_token() );
-
-				$result = $this->fetch_bank_token( $result->access_token );
-
-				$this->set_new_source_token( $result->stripe_bank_account_token );
-			} catch ( Exception $e ) {
-				wc_add_notice( sprintf( __( 'Error processing payment. Reason: %s', 'woo-stripe-payment' ), $e->getMessage() ), 'error' );
-			}
-		}
-		add_filter(
-			'wc_stripe_order_meta_data',
-			function ( $metadata ) {
-				$metadata['plaid_id'] = $this->get_option( 'client_id' );
-
-				return $metadata;
-			}
-		);
-
-		return parent::process_payment( $order_id );
-	}
-
-	private function do_api_request( $uri, $body, $method = 'POST' ) {
-		$response = wp_safe_remote_post(
-			$this->get_plaid_url( $uri ),
-			array(
-				'headers'     => array( 'Content-Type' => 'application/json' ),
-				'body'        => wp_json_encode( $body ),
-				'data_format' => 'body',
-			)
-		);
-		if ( is_wp_error( $response ) ) {
-			throw new Exception( $response->get_error_message() );
-		} else {
-			$body = json_decode( $response['body'] );
-			if ( $response['response']['code'] > 299 ) {
-				throw new Exception( $body->error_message );
-			} else {
-				return $body;
-			}
-		}
-	}
-
-	private function fetch_access_token( $public_token ) {
-		$env = $this->get_plaid_environment();
-
-		return $this->do_api_request(
-			'item/public_token/exchange',
-			array(
-				'client_id'    => $this->get_option( 'client_id' ),
-				'secret'       => $this->get_option( "{$env}_secret" ),
-				'public_token' => $public_token
-			)
-		);
-	}
-
-	private function fetch_bank_token( $access_token ) {
-		$env = $this->get_plaid_environment();
-
-		return $this->do_api_request(
-			'processor/stripe/bank_account_token/create',
-			array(
-				'client_id'    => $this->get_option( 'client_id' ),
-				'secret'       => $this->get_option( "{$env}_secret" ),
-				'access_token' => $access_token,
-				'account_id'   => $this->get_metadata()['account_id'],
-			)
-		);
-	}
-
-	/**
-	 * @return mixed|null
-	 * @throws Exception
-	 * @since 3.2.1
-	 */
-	public function fetch_link_token() {
-		$env = $this->get_plaid_environment();
-
-		return $this->do_api_request(
-			'link/token/create',
-			array(
-				'client_id'     => $this->get_option( 'client_id' ),
-				'secret'        => $this->get_option( "{$env}_secret" ),
-				'client_name'   => $this->get_option( 'client_name' ),
-				'language'      => 'en',
-				'country_codes' => array( 'US' ),
-				'user'          => array(
-					'client_user_id' => WC()->session->get_customer_id()
-				),
-				'products'      => array( 'auth' )
-			)
-		);
-	}
-
-	/**
-	 * Return the base plaid api url.
-	 *
-	 * @return string
-	 */
-	private function get_base_url() {
-		$url = '';
-		switch ( $this->get_plaid_environment() ) {
-			case 'production':
-				$url = 'https://production.plaid.com/';
-				break;
-			case 'sandbox':
-				$url = 'https://sandbox.plaid.com/';
-				break;
-			case 'development':
-				$url = 'https://development.plaid.com/';
-				break;
-		}
-
-		return $url;
-	}
-
-	private function get_plaid_url( $uri ) {
-		return sprintf( '%s%s', $this->get_base_url(), $uri );
-	}
-
-	public function get_plaid_environment() {
-		return $this->get_option( 'environment' );
-	}
-
-	private function get_metadata() {
-		return isset( $_POST[ $this->metadata_key ] ) ? json_decode( stripslashes( $_POST[ $this->metadata_key ] ), true ) : null;
-	}
-
-	private function get_public_token() {
-		return $this->get_new_source_token();
+		$scripts->localize_script( 'ach-connections', $this->get_localized_params() );
 	}
 
 	public function get_saved_methods_label() {
@@ -285,19 +133,6 @@ class WC_Payment_Gateway_Stripe_ACH extends WC_Payment_Gateway_Stripe {
 		return $value;
 	}
 
-	/**
-	 *
-	 * @param string $key
-	 * @param string $value
-	 */
-	public function validate_environment_field( $key, $value ) {
-		if ( 'test' == wc_stripe_mode() && 'development' == $value ) {
-			WC_Admin_Settings::add_error( __( 'You must set the API mode to live in order to enable the Plaid development environment.', 'woo-stripe-payment' ) );
-		}
-
-		return $value;
-	}
-
 	public function fees_enabled() {
 		$fee = $this->get_option(
 			'fee',
@@ -314,13 +149,8 @@ class WC_Payment_Gateway_Stripe_ACH extends WC_Payment_Gateway_Stripe {
 	 *
 	 * @param WC_Cart $cart
 	 */
-	public function after_calculate_totals( $cart ) {
-		remove_action( 'woocommerce_after_calculate_totals', array( $this, 'after_calculate_totals' ) );
-
-		add_action( 'woocommerce_cart_calculate_fees', array( $this, 'calculate_fees' ) );
-
-		WC()->session->set( 'wc_stripe_cart_total', $cart->total );
-		$cart->calculate_totals();
+	public function calculate_cart_fees( $cart ) {
+		$this->calculate_fees( $cart );
 	}
 
 	/**
@@ -328,59 +158,131 @@ class WC_Payment_Gateway_Stripe_ACH extends WC_Payment_Gateway_Stripe {
 	 * @param WC_Cart $cart
 	 */
 	public function calculate_fees( $cart ) {
-		remove_action( 'woocommerce_cart_calculate_fees', array( $this, 'calculate_fees' ) );
 		$fee     = $this->get_option( 'fee' );
-		$taxable = $fee['taxable'] == 'yes';
+		$taxable = wc_string_to_bool( $fee['taxable'] );
 		switch ( $fee['type'] ) {
 			case 'amount':
-				$cart->add_fee( __( 'ACH Fee' ), $fee['value'], $taxable );
+				$cart->add_fee( __( 'ACH Fee', 'woo-stripe-payment' ), $fee['value'], $taxable );
 				break;
 			case 'percent':
-				$cart->add_fee( __( 'ACH Fee' ), $fee['value'] * WC()->session->get( 'wc_stripe_cart_total', 0 ), $taxable );
+				$cart_total = $cart->get_subtotal() + $cart->get_shipping_total() + $cart->get_subtotal_tax() + $cart->get_shipping_tax();
+				$cart->add_fee( __( 'ACH Fee', 'woo-stripe-payment' ), $fee['value'] * $cart_total, $taxable );
 				break;
 		}
-		unset( WC()->session->wc_stripe_cart_total );
 	}
 
 	public static function update_order_review() {
 		if ( ! empty( $_POST['payment_method'] ) && wc_clean( $_POST['payment_method'] ) === 'stripe_ach' ) {
 			$payment_method = new WC_Payment_Gateway_Stripe_ACH();
 			if ( $payment_method->fees_enabled() ) {
-				add_action( 'woocommerce_after_calculate_totals', array( $payment_method, 'after_calculate_totals' ) );
+				add_action( 'woocommerce_cart_calculate_fees', array( $payment_method, 'calculate_cart_fees' ) );
+			}
+		}
+	}
+
+	public static function add_fees_for_checkout() {
+		if ( ! empty( $_POST['payment_method'] ) && wc_clean( $_POST['payment_method'] ) === 'stripe_ach' ) {
+			$payment_method = WC()->payment_gateways()->payment_gateways()['stripe_ach'];
+			if ( $payment_method && $payment_method->fees_enabled() ) {
+				add_action( 'woocommerce_cart_calculate_fees', array( $payment_method, 'calculate_cart_fees' ) );
+			}
+		}
+	}
+
+	public function has_enqueued_scripts( $scripts ) {
+		return wp_script_is( $scripts->get_handle( 'ach-connections' ) );
+	}
+
+	public function add_stripe_order_args( &$args, $order ) {
+		$args['payment_method_options'] = array(
+			'us_bank_account' => array(
+				'verification_method'   => 'instant',
+				'financial_connections' => array(
+					'permissions' => array( 'payment_method' ) //@todo - add balances in future release 'permissions' => array( 'payment_method', 'balances' )
+				)
+			)
+		);
+		// check if this was a Plaid bank token. If so, add the mandate
+		if ( strpos( $order->get_meta( WC_Stripe_Constants::PAYMENT_METHOD_TOKEN ), 'ba_' ) !== false ) {
+			if ( $this->is_processing_scheduled_payment() ) {
+				$ip_address = $order->get_customer_ip_address();
+				$user_agent = $order->get_customer_user_agent();
+				if ( ! $ip_address ) {
+					$ip_address = WC_Geolocation::get_external_ip_address();
+				}
+				if ( ! $user_agent ) {
+					$user_agent = 'WordPress/' . get_bloginfo( 'version' ) . '; ' . get_bloginfo( 'url' );
+				}
+				$args['mandate_data'] = array(
+					'customer_acceptance' => array(
+						'type'   => 'online',
+						'online' => array(
+							'ip_address' => $ip_address,
+							'user_agent' => $user_agent
+						)
+					)
+				);
 			}
 		}
 	}
 
 	/**
-	 * Override so Plaid token can be converted to a Stripe bank token.
+	 * @param           $intent
+	 * @param \WC_Order $order
 	 *
-	 * {@inheritDoc}
-	 *
-	 * @see WC_Payment_Gateway_Stripe::create_payment_method()
+	 * @return \array[][]
 	 */
-	public function create_payment_method( $id, $customer_id ) {
-		if ( $this->is_change_payment_method_request() ) {
-			$result = $this->fetch_access_token( $this->get_public_token() );
-
-			if ( is_wp_error( $result ) ) {
-				return $result;
-			}
-
-			$result = $this->fetch_bank_token( $result->access_token );
-
-			if ( is_wp_error( $result ) ) {
-				return $result;
-			}
-
-			$id = $result->stripe_bank_account_token;
+	public function get_payment_intent_confirmation_args( $intent, $order ) {
+		$ip_address = $order->get_customer_ip_address();
+		$user_agent = $order->get_customer_user_agent();
+		if ( ! $ip_address ) {
+			$ip_address = WC_Geolocation::get_external_ip_address();
+		}
+		if ( ! $user_agent ) {
+			$user_agent = 'WordPress/' . get_bloginfo( 'version' ) . '; ' . get_bloginfo( 'url' );
 		}
 
-		return parent::create_payment_method( $id, $customer_id );
+		return array(
+			'mandate_data' => array(
+				'customer_acceptance' => array(
+					'type'   => 'online',
+					'online' => array(
+						'ip_address' => $ip_address,
+						'user_agent' => $user_agent
+					)
+				)
+			)
+		);
 	}
 
-	public function has_enqueued_scripts( $scripts ) {
-		return wp_script_is( $scripts->get_handle( 'ach' ) );
+	public function get_mandate_text() {
+		return apply_filters( 'wc_stripe_ach_get_mandate_text', sprintf(
+			__( 'By clicking %1$s, you authorize %2$s to debit the bank 
+		account you select for any amount owed for charges arising from your use of %2$s 
+		services and/or purchase of products from %2$s, pursuant to %2$s 
+		website and terms, until this authorization is revoked. You may amend or cancel this 
+		authorization at any time by providing notice to %2$s with 30 (thirty) days notice.',
+				'woo-stripe-payment' ), $this->order_button_text, $this->get_option( 'business_name' ) ), $this );
 	}
+
+	public function get_localized_params() {
+		return array_merge_recursive(
+			parent::get_localized_params(),
+			array(
+				'fees_enabled' => $this->fees_enabled()
+			)
+		);
+	}
+
+	public function admin_options() {
+		if ( wc_string_to_bool( $this->get_option( 'plaid_enabled', 'no' ) ) ) {
+			$description                              = '<p>' . sprintf( __( 'The %1$sPlaid ACH%2$s gateway has been deprecated. If you still want to use the Plaid gateway, you can download it %1$shere%2$s.', 'woo-stripe-payment' ),
+					'<a target="_blank" href="https://github.com/paymentplugins/paymentplugins-plaid-gateway/releases">', '</a>' ) . '</p>';
+			$this->form_fields['desc']['description'] = $this->form_fields['desc']['description'] . $description;
+		}
+		parent::admin_options();
+	}
+
 }
 
 WC_Payment_Gateway_Stripe_ACH::init();

@@ -1,4 +1,5 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
@@ -8,12 +9,14 @@ if ( ! class_exists( 'WC_Payment_Gateway_Stripe_Local_Payment' ) ) {
 /**
  *
  * @package Stripe/Gateways
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  *
  */
 class WC_Payment_Gateway_Stripe_Sofort extends WC_Payment_Gateway_Stripe_Local_Payment {
 
-	use WC_Stripe_Local_Payment_Charge_Trait;
+	use WC_Stripe_Local_Payment_Intent_Trait;
+
+	protected $payment_method_type = 'sofort';
 
 	public function __construct() {
 		$this->synchronous        = false;
@@ -30,7 +33,4 @@ class WC_Payment_Gateway_Stripe_Sofort extends WC_Payment_Gateway_Stripe_Local_P
 		parent::__construct();
 	}
 
-	public function get_source_args( $order ) {
-		return array_merge( parent::get_source_args( $order ), array( 'sofort' => array( 'country' => $order->get_billing_country() ) ) );
-	}
 }

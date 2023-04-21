@@ -4,7 +4,7 @@ import {
     useProcessPaymentIntent,
     useStripeError,
     useExportedValues,
-    useExpressBreakpointWidth
+    useExpressBreakpointWidth, useAfterProcessingPayment
 } from '../hooks';
 import {getSettings} from '@paymentplugins/stripe/util';
 
@@ -33,7 +33,7 @@ const GooglePayButton = (
     const {onSubmit, emitResponse} = props;
     const {onPaymentProcessing} = eventRegistration;
     const exportedValues = useExportedValues();
-    const width = getData('buttonStyle').buttonType === 'long' ? 390 : 300;
+    const width = getData('buttonStyle').buttonType === 'long' ? 390 : 375;
     const {setPaymentMethod} = useProcessPaymentIntent({
         getData,
         billing,
@@ -47,7 +47,7 @@ const GooglePayButton = (
         activePaymentMethod
     });
 
-    const paymentRequest = usePaymentRequest({
+    const buildPaymentRequest = usePaymentRequest({
         getData,
         publishableKey,
         merchantInfo,
@@ -57,7 +57,7 @@ const GooglePayButton = (
 
     const {button, removeButton} = usePaymentsClient({
         merchantInfo,
-        paymentRequest,
+        buildPaymentRequest,
         billing,
         shippingData,
         eventRegistration,
@@ -69,6 +69,13 @@ const GooglePayButton = (
         onClick,
         onClose,
         getData
+    });
+
+    useAfterProcessingPayment({
+        getData,
+        eventRegistration,
+        responseTypes: emitResponse.responseTypes,
+        activePaymentMethod
     });
 
     useExpressBreakpointWidth({payment_method: getData('name'), width});

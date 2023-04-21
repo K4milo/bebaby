@@ -88,8 +88,8 @@
   &.stripe_alipay {
     img {
       &.wc-block-components-payment-method-icon--stripe_alipay {
-        height: 25px;
-        max-height: 25px;
+        height: 20px;
+        max-height: 20px;
       }
 
     }
@@ -103,6 +103,39 @@
         max-width: 48px;
       }
 
+    }
+  }
+
+  &.stripe_konbini {
+    img {
+      &.wc-block-components-payment-method-icon--stripe_konbini {
+        height: 50px;
+        width: 42px;
+        max-height: 50px;
+      }
+    }
+  }
+
+  &.stripe_paynow {
+    img {
+      &.wc-block-components-payment-method-icon--stripe_paynow {
+        height: 30px;
+        width: 75px;
+        max-height: 30px;
+      }
+    }
+  }
+
+  .wc-stripe-affirm-message-container,
+  .wc-stripe-afterpay-message-container {
+    display: flex;
+    justify-content: flex-end;
+    flex: 1;
+    margin-right: 8px;
+
+    .StripeElement {
+      width: 100%;
+      margin-left: 30px;
     }
   }
 }
@@ -133,30 +166,6 @@
 .wechat-validation-error {
   .wc-block-components-validation-error {
     position: relative;
-  }
-}
-
-.wc-stripe-blocks-afterpay-offsite__container {
-  display: flex;
-  width: 100%;
-  justify-content: center;
-
-  .wc-stripe-blocks-afterpay__offsite {
-    max-width: 320px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    font-size: 16px;
-    text-align: center;
-
-    img {
-      max-width: 105px;
-    }
-
-    p {
-      margin: 1em 0 0 0;
-      width: 100%;
-    }
   }
 }
 
@@ -193,5 +202,55 @@
 .wc-stripe-klarna__testmode {
   label {
     display: inline-block;
+  }
+}
+
+.wc-stripe-blocks-mandate {
+  margin-top: 10px;
+}
+
+.wc-stripe-blik-codes {
+  display: flex;
+  margin: 0 -8px;
+  flex-wrap: wrap;
+
+  span {
+    margin: 8px 8px;
+
+    input {
+      width: 45px;
+      height: 45px;
+      text-align: center;
+      font-size: 18px;
+      border: 1px solid #50575e;
+      border-radius: 4px;
+    }
+  }
+}
+
+.wc-stripe-blik-codes-container {
+  padding: 0 1em;
+}
+
+.wc-stripe-blik-timer-container {
+  display: flex;
+  flex-direction: column;
+  font-size: 1.2em;
+  align-items: baseline;
+  padding: 0 1em;
+  
+  .wc-stripe-blik-timer {
+    display: flex;
+    font-size: 1.4em;
+    position: relative;
+
+    .timer {
+      margin-right: 14px;
+    }
+
+    .seconds {
+      position: absolute;
+      right: 0;
+    }
   }
 }

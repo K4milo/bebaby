@@ -126,6 +126,8 @@ AwsHooks.filters = AwsHooks.filters || {};
                     typedata: 'json'
                 };
 
+                data = AwsHooks.apply_filters( 'aws_ajax_request_params', data, { instance: instance, form: self, data: d } );
+
                 requests.push(
 
                     $.ajax({
@@ -170,7 +172,7 @@ AwsHooks.filters = AwsHooks.filters || {};
 
                                 html += '<li class="aws_result_item aws_result_tag" style="position:relative;">';
                                     html += '<div class="aws_result_link">';
-                                        html += '<a class="aws_result_link_top" style="position:absolute;z-index:1;white-space:nowrap;text-indent:-9999px;overflow:hidden;top:0;bottom:0;left:0;right:0;opacity:0;outline:none;text-decoration:none;" href="' + taxitem.link + '">' + taxitem.name + '</a>';
+                                        html += '<a class="aws_result_link_top" href="' + taxitem.link + '">' + taxitem.name + '</a>';
                                         html += '<span class="aws_result_content">';
                                             html += '<span class="aws_result_title">';
                                                 html += taxitem.name;
@@ -201,7 +203,7 @@ AwsHooks.filters = AwsHooks.filters || {};
                         html += '<li class="aws_result_item" style="position:relative;">';
                         html += '<div class="aws_result_link">';
 
-                        html += '<a class="aws_result_link_top" style="position:absolute;z-index:1;white-space:nowrap;text-indent:-9999px;overflow:hidden;top:0;bottom:0;left:0;right:0;opacity:0;outline:none;text-decoration:none;" href="' + result.link + '">' + result.title.replace(/<(?:.|\n)*?>/gm, '') + '</a>';
+                        html += '<a class="aws_result_link_top" href="' + result.link + '">' + result.title.replace(/(<[\s\S]*>)/gm, '') + '</a>';
 
                         if ( result.image ) {
                             html += '<span class="aws_result_image">';
@@ -212,10 +214,10 @@ AwsHooks.filters = AwsHooks.filters || {};
                         html += '<span class="aws_result_content">';
 
                         html += '<span class="aws_result_title">';
+                            html += result.title;
                             if ( result.featured ) {
                                 html += '<span class="aws_result_featured" title="Featured"><svg version="1.1" viewBox="0 0 20 21" xmlns="http://www.w3.org/2000/svg" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns" xmlns:xlink="http://www.w3.org/1999/xlink"><g fill-rule="evenodd" stroke="none" stroke-width="1"><g transform="translate(-296.000000, -422.000000)"><g transform="translate(296.000000, 422.500000)"><path d="M10,15.273 L16.18,19 L14.545,11.971 L20,7.244 L12.809,6.627 L10,0 L7.191,6.627 L0,7.244 L5.455,11.971 L3.82,19 L10,15.273 Z"/></g></g></g></svg></span>';
                             }
-                            html += result.title;
                         html += '</span>';
 
                         if ( result.stock_status ) {

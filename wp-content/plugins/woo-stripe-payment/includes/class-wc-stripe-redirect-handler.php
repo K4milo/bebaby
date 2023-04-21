@@ -42,8 +42,23 @@ class WC_Stripe_Redirect_Handler {
 			wc_add_notice( __( 'This request is invalid. Please try again.', 'woo-stripe-payment' ), 'error' );
 		} else {
 			define( WC_Stripe_Constants::REDIRECT_HANDLER, true );
-			$order_id = $result->metadata['order_id'];
-			$order    = wc_get_order( wc_stripe_filter_order_id( $order_id, $result ) );
+			$order_id = null;
+			if ( isset( $result->metadata['order_id'] ) ) {
+				$order_id = $result->metadata['order_id'];
+			} else {
+				if ( isset( $_GET['key'], $_GET['order_id'] ) ) {
+					$order = wc_get_order( absint( $_GET['order_id'] ) );
+					if ( $order && ! $order->key_is_valid( $_GET['key'] ) ) {
+						wc_stripe_log_info( 'Invalid order key provided while processing redirect.' );
+					} else {
+						$order_id = absint( $_GET['order_id'] );
+					}
+				}
+			}
+			$order = wc_get_order( wc_stripe_filter_order_id( $order_id, $result ) );
+			if ( ! $order ) {
+				return;
+			}
 
 			/**
 			 *
@@ -60,12 +75,13 @@ class WC_Stripe_Redirect_Handler {
 				}
 			} elseif ( in_array( $result->status, array( 'requires_payment_method', 'failed' ) ) ) {
 				wc_add_notice( __( 'Payment authorization failed. Please select another payment method.', 'woo-stripe-payment' ), 'error' );
+				wc_stripe_log_info( sprintf( 'User cancelled their payment and has been redirected to the checkout page. Payment Method: %s. Order ID: %s', $payment_method->id, $order->get_id() ) );
 				if ( $result instanceof \Stripe\PaymentIntent ) {
-					$order->update_meta_data( WC_Stripe_Constants::PAYMENT_INTENT, $result->jsonSerialize() );
+					$order->update_meta_data( WC_Stripe_Constants::PAYMENT_INTENT, WC_Stripe_Utils::sanitize_intent( $result->toArray() ) );
 				} else {
 					$order->delete_meta_data( WC_Stripe_Constants::SOURCE_ID );
 				}
-				$order->update_status( 'failed', __( 'Payment authorization failed.', 'woo-stripe-payment' ) );
+				$order->update_status( 'pending' );
 
 				return;
 			} elseif ( 'chargeable' === $result->status ) {
@@ -85,6 +101,17 @@ class WC_Stripe_Redirect_Handler {
 					if ( $result['result'] === 'success' ) {
 						$redirect = $result['redirect'];
 					}
+				}
+			} elseif ( $result->status === 'processing' && isset( $result->charges->data ) ) {
+				if ( ! $payment_method->has_order_lock( $order ) ) {
+					$payment_method->set_order_lock( $order );
+					$payment_method->payment_object->payment_complete( $order, $result->charges->data[0] );
+					WC_Stripe_Utils::delete_payment_intent_to_session();
+					$payment_method->release_order_lock( $order );
+				}
+				// if this isn't the checkout page, then skip redirect
+				if ( ! is_checkout() ) {
+					return;
 				}
 			}
 			wp_safe_redirect( $redirect );

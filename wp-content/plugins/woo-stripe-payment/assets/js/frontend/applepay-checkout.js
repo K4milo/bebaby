@@ -28,7 +28,7 @@
                 $button.addClass('banner-checkout');
                 $button.on('click', this.start.bind(this));
                 $(this.banner_container).empty().append($button);
-                $(this.banner_container).show().parent().parent().addClass('active');
+                $(this.banner_container).show().addClass('active').closest('.wc-stripe-banner-checkout').addClass('active');
             }
         }.bind(this))
     }
@@ -67,7 +67,7 @@
         }
         this.fields.toFormFields({update_shipping_method: false});
         if (this.checkout_fields_valid()) {
-            this.get_form().submit();
+            this.get_form().trigger('submit');
         }
     }
 

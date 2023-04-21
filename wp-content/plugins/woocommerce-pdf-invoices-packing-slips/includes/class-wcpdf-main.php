@@ -2,9 +2,6 @@
 namespace WPO\WC\PDF_Invoices;
 
 use WPO\WC\PDF_Invoices\Font_Synchronizer;
-use WPO\WC\PDF_Invoices\Compatibility\WC_Core as WCX;
-use WPO\WC\PDF_Invoices\Compatibility\Order as WCX_Order;
-use WPO\WC\PDF_Invoices\Compatibility\Product as WCX_Product;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
@@ -16,13 +13,16 @@ class Main {
 
 	private $subfolders = array( 'attachments', 'fonts', 'dompdf' );
 
-	function __construct()	{
-		add_action( 'wp_ajax_generate_wpo_wcpdf', array($this, 'generate_pdf_ajax' ) );
-		add_action( 'wp_ajax_nopriv_generate_wpo_wcpdf', array($this, 'generate_pdf_ajax' ) );
+	public function __construct() {
+		add_action( 'wp_ajax_generate_wpo_wcpdf', array( $this, 'generate_pdf_ajax' ) );
+		add_action( 'wp_ajax_nopriv_generate_wpo_wcpdf', array( $this, 'generate_pdf_ajax' ) );
+		
+		// mark/unmark printed
+		add_action( 'wp_ajax_printed_wpo_wcpdf', array( $this, 'document_printed_ajax' ) );
 
 		// email
 		add_filter( 'woocommerce_email_attachments', array( $this, 'attach_pdf_to_email' ), 99, 4 );
-		add_filter( 'wpo_wcpdf_document_is_allowed', array( $this, 'disable_free'), 10, 2 );
+		add_filter( 'wpo_wcpdf_document_is_allowed', array( $this, 'disable_free' ), 10, 2 );
 		add_filter( 'wp_mail', array( $this, 'set_phpmailer_validator'), 10, 1 );
 
 		if ( isset(WPO_WCPDF()->settings->debug_settings['enable_debug']) ) {
@@ -45,8 +45,11 @@ class Main {
 		add_action( 'wp_scheduled_delete', array( $this, 'schedule_temporary_files_cleanup' ) );
 
 		// remove private data
-		add_action( 'woocommerce_privacy_remove_order_personal_data_meta', array( $this, 'remove_order_personal_data_meta' ), 10, 1 );
-		add_action( 'woocommerce_privacy_remove_order_personal_data', array( $this, 'remove_order_personal_data' ), 10, 1 );
+		if ( apply_filters( 'wpo_wcpdf_remove_order_personal_data', true ) ) {
+			add_action( 'woocommerce_privacy_remove_order_personal_data_meta', array( $this, 'remove_order_personal_data_meta' ), 10, 1 );
+			add_action( 'woocommerce_privacy_remove_order_personal_data', array( $this, 'remove_order_personal_data' ), 10, 1 );
+			add_filter( 'wpo_wcpdf_document_is_allowed', array( $this, 'disable_anonymized' ), 11, 2 );
+		}
 		// export private data
 		add_action( 'woocommerce_privacy_export_order_personal_data_meta', array( $this, 'export_order_personal_data_meta' ), 10, 1 );
 
@@ -68,26 +71,29 @@ class Main {
 	 */
 	public function attach_pdf_to_email ( $attachments, $email_id, $order, $email = null ) {
 		// check if all variables properly set
-		if ( !is_object( $order ) || !isset( $email_id ) ) {
+		if ( ! is_object( $order ) || ! isset( $email_id ) ) {
 			return $attachments;
 		}
+
+		// allow third party emails to swap the order object
+		$order = apply_filters( 'wpo_wcpdf_email_order_object', $order, $email_id, $email );
 
 		// Skip User emails
 		if ( get_class( $order ) == 'WP_User' ) {
 			return $attachments;
 		}
 
-		$order_id = WCX_Order::get_id( $order );
+		$order_id = is_callable( array( $order, 'get_id' ) ) ? $order->get_id() : false;
 
 		if ( ! ( $order instanceof \WC_Order || is_subclass_of( $order, '\WC_Abstract_Order') ) && $order_id == false ) {
 			return $attachments;
 		}
 
 		// WooCommerce Booking compatibility
-		if ( get_post_type( $order_id ) == 'wc_booking' && isset($order->order) ) {
+		if ( get_post_type( $order_id ) == 'wc_booking' && isset( $order->order ) && ! empty( $order->order ) ) {
 			// $order is actually a WC_Booking object!
-			$order = $order->order;
-			$order_id = WCX_Order::get_id( $order );
+			$order    = $order->order;
+			$order_id = $order->get_id();
 		}
 
 		// do not process low stock notifications, user emails etc!
@@ -96,11 +102,11 @@ class Main {
 		}
 
 		// final check on order object
-		if ( ! ( $order instanceof \WC_Order || is_subclass_of( $order, '\WC_Abstract_Order') ) ) {
+		if ( ! ( $order instanceof \WC_Order || is_subclass_of( $order, '\WC_Abstract_Order' ) ) ) {
 			return $attachments;
 		}
 
-		$tmp_path = $this->get_tmp_path('attachments');
+		$tmp_path = $this->get_tmp_path( 'attachments' );
 		if ( ! @is_dir( $tmp_path ) || ! wp_is_writable( $tmp_path ) ) {
 			return $attachments;
 		}
@@ -120,19 +126,22 @@ class Main {
 		$attach_to_document_types = $this->get_documents_for_email( $email_id, $order );
 		foreach ( $attach_to_document_types as $document_type ) {
 			$email_order    = apply_filters( 'wpo_wcpdf_email_attachment_order', $order, $email, $document_type );
-			$email_order_id = WCX_Order::get_id( $email_order );
+			$email_order_id = $email_order->get_id();
 
 			do_action( 'wpo_wcpdf_before_attachment_creation', $email_order, $email_id, $document_type );
 
 			try {
 				// log document generation to order notes
-				add_action( 'wpo_wcpdf_init_document', array( $this, 'log_email_attachment_to_order_notes' ) );
+				add_action( 'wpo_wcpdf_init_document', function( $document ) {
+					$this->log_document_creation_to_order_notes( $document, 'email_attachment' );
+					$this->mark_document_printed( $document, 'email_attachment' );
+				} );
 				
 				// prepare document
 				// we use ID to force to reloading the order to make sure that all meta data is up to date.
 				// this is especially important when multiple emails with the PDF document are sent in the same session
 				$document = wcpdf_get_document( $document_type, (array) $email_order_id, true );
-				if ( !$document ) { // something went wrong, continue trying with other documents
+				if ( ! $document ) { // something went wrong, continue trying with other documents
 					continue;
 				}
 				$filename = $document->get_filename();
@@ -142,9 +151,9 @@ class Main {
 
 				// if this file already exists in the temp path, we'll reuse it if it's not older than 60 seconds
 				$max_reuse_age = apply_filters( 'wpo_wcpdf_reuse_attachment_age', 60 );
-				if ( file_exists($pdf_path) && $max_reuse_age > 0 ) {
+				if ( file_exists( $pdf_path ) && $max_reuse_age > 0 ) {
 					// get last modification date
-					if ($filemtime = filemtime($pdf_path)) {
+					if ($filemtime = filemtime( $pdf_path )) {
 						$time_difference = time() - $filemtime;
 						if ( $time_difference < $max_reuse_age ) {
 							// check if file is still being written to
@@ -253,38 +262,67 @@ class Main {
 	 * Load and generate the template output with ajax
 	 */
 	public function generate_pdf_ajax() {
-		$guest_access = isset( WPO_WCPDF()->settings->debug_settings['guest_access'] );
-		if ( !$guest_access && current_filter() == 'wp_ajax_nopriv_generate_wpo_wcpdf') {
+		$guest_access = WPO_WCPDF()->settings->is_guest_access_enabled();
+		if ( ! $guest_access && current_filter() == 'wp_ajax_nopriv_generate_wpo_wcpdf' ) {
+			wp_die( esc_attr__( 'You do not have sufficient permissions to access this page.', 'woocommerce-pdf-invoices-packing-slips' ) );
+		}
+
+		// handle legacy access keys
+		if ( empty( $_REQUEST['access_key'] ) ) {
+			foreach ( array( '_wpnonce', 'order_key' ) as $legacy_key ) {
+				if ( ! empty( $_REQUEST[$legacy_key] ) ) {
+					$_REQUEST['access_key'] = sanitize_text_field( $_REQUEST[$legacy_key] );
+				}
+			}
+		}
+
+		$valid_nonce = ! empty( $_REQUEST['access_key'] ) && ! empty( $_REQUEST['action'] ) && wp_verify_nonce( $_REQUEST['access_key'], $_REQUEST['action'] );
+
+		// check if we have the access key set
+		if ( empty( $_REQUEST['access_key'] ) ) {
 			wp_die( esc_attr__( 'You do not have sufficient permissions to access this page.', 'woocommerce-pdf-invoices-packing-slips' ) );
 		}
 
 		// Check the nonce - guest access doesn't use nonces but checks the unique order key (hash)
-		if( empty( $_GET['action'] ) || ( !$guest_access && !check_admin_referer( $_GET['action'] ) ) ) {
+		if ( empty( $_REQUEST['action'] ) || ( ! $guest_access && ! $valid_nonce ) ) {
 			wp_die( esc_attr__( 'You do not have sufficient permissions to access this page.', 'woocommerce-pdf-invoices-packing-slips' ) );
 		}
 
 		// Check if all parameters are set
-		if ( empty( $_GET['document_type'] ) && !empty( $_GET['template_type'] ) ) {
-			$_GET['document_type'] = $_GET['template_type'];
+		if ( empty( $_REQUEST['document_type'] ) && !empty( $_REQUEST['template_type'] ) ) {
+			$_REQUEST['document_type'] = $_REQUEST['template_type'];
 		}
 
-		if ( empty( $_GET['order_ids'] ) ) {
+		if ( empty( $_REQUEST['order_ids'] ) ) {
 			wp_die( esc_attr__( "You haven't selected any orders", 'woocommerce-pdf-invoices-packing-slips' ) );
 		}
 
-		if( empty( $_GET['document_type'] ) ) {
+		if( empty( $_REQUEST['document_type'] ) ) {
 			wp_die( esc_attr__( 'Some of the export parameters are missing.', 'woocommerce-pdf-invoices-packing-slips' ) );
 		}
 
 		// debug enabled by URL
-		if ( isset( $_GET['debug'] ) && !( $guest_access || isset( $_GET['my-account'] ) ) ) {
+		if ( isset( $_REQUEST['debug'] ) && !( $guest_access || isset( $_REQUEST['my-account'] ) ) ) {
 			$this->enable_debug();
 		}
 
 		// Generate the output
-		$document_type = sanitize_text_field( $_GET['document_type'] );
+		$document_type = sanitize_text_field( $_REQUEST['document_type'] );
 
-		$order_ids = (array) array_map( 'absint', explode( 'x', $_GET['order_ids'] ) );
+		$order_ids = (array) array_map( 'absint', explode( 'x', $_REQUEST['order_ids'] ) );
+		
+		// solo order
+		$order = false;
+		if ( count( $order_ids ) === 1 ) {
+			$order_id = reset( $order_ids );
+			$order    = wc_get_order( $order_id );
+			if ( $order && $order->get_status() == 'auto-draft' ) {
+				wp_die( esc_attr__( 'You have to save the order before generating a PDF document for it.', 'woocommerce-pdf-invoices-packing-slips' ) );
+			} elseif ( ! $order ) {
+				/* translators: %s: Order ID */
+				wp_die( sprintf( esc_attr__( 'Could not find the order #%s.', 'woocommerce-pdf-invoices-packing-slips' ), $order_id ) );
+			}
+		}
 
 		// Process oldest first: reverse $order_ids array if required
 		$sort_order         = apply_filters( 'wpo_wcpdf_bulk_document_sort_order', 'ASC' );
@@ -296,13 +334,12 @@ class Main {
 		// set default is allowed
 		$allowed = true;
 
-		if ( $guest_access && isset( $_GET['order_key'] ) ) {
+		if ( $guest_access && ! $valid_nonce ) { // if nonce is invalid maybe we are dealing with the order key
 			// Guest access with order key
 			if ( count( $order_ids ) > 1 ) {
 				$allowed = false;
 			} else {
-				$order = wc_get_order( $order_ids[0] );
-				if ( !$order || ! hash_equals( $order->get_order_key(), $_GET['order_key'] ) ) {
+				if ( ! $order || ! hash_equals( $order->get_order_key(), $_REQUEST['access_key'] ) ) {
 					$allowed = false;
 				}
 			}
@@ -313,20 +350,20 @@ class Main {
 			}
 
 			// Check the user privileges
-			if( !( current_user_can( 'manage_woocommerce_orders' ) || current_user_can( 'edit_shop_orders' ) ) && !isset( $_GET['my-account'] ) ) {
-				$allowed = false;
-			}
-
-			// User call from my-account page
-			if ( !current_user_can('manage_options') && isset( $_GET['my-account'] ) ) {
-				// Only for single orders!
-				if ( count( $order_ids ) > 1 ) {
+			$full_permission = WPO_WCPDF()->admin->user_can_manage_document( $document_type );
+			if ( ! $full_permission ) {
+				if ( ! isset( $_GET['my-account'] ) && ! isset( $_GET['shortcode'] ) ) {
 					$allowed = false;
-				}
-
-				// Check if current user is owner of order IMPORTANT!!!
-				if ( ! current_user_can( 'view_order', $order_ids[0] ) ) {
-					$allowed = false;
+				} else { // User call from my-account page or via shortcode
+					// Only for single orders!
+					if ( count( $order_ids ) > 1 ) {
+						$allowed = false;
+					}
+		
+					// Check if current user is owner of order IMPORTANT!!!
+					if ( ! current_user_can( 'view_order', $order_ids[0] ) ) {
+						$allowed = false;
+					}
 				}
 			}
 		}
@@ -340,12 +377,21 @@ class Main {
 		// if we got here, we're safe to go!
 		try {
 			// log document creation to order notes
-			if( count( $order_ids ) > 1 && isset( $_GET['bulk'] ) ) {
-				add_action( 'wpo_wcpdf_init_document', array( $this, 'log_bulk_to_order_notes' ) );
-			} elseif( isset( $_GET['my-account'] ) ) {
-				add_action( 'wpo_wcpdf_init_document', array( $this, 'log_my_account_to_order_notes' ) );
+			if ( count( $order_ids ) > 1 && isset( $_REQUEST['bulk'] ) ) {
+				add_action( 'wpo_wcpdf_init_document', function( $document ) {
+					$this->log_document_creation_to_order_notes( $document, 'bulk' );
+					$this->mark_document_printed( $document, 'bulk' );
+				} );
+			} elseif ( isset( $_REQUEST['my-account'] ) ) {
+				add_action( 'wpo_wcpdf_init_document', function( $document ) {
+					$this->log_document_creation_to_order_notes( $document, 'my_account' );
+					$this->mark_document_printed( $document, 'my_account' );
+				} );
 			} else {
-				add_action( 'wpo_wcpdf_init_document', array( $this, 'log_single_to_order_notes' ) );
+				add_action( 'wpo_wcpdf_init_document', function( $document ) {
+					$this->log_document_creation_to_order_notes( $document, 'single' );
+					$this->mark_document_printed( $document, 'single' );
+				} );
 			}
 
 			// get document
@@ -356,8 +402,8 @@ class Main {
 
 				$output_format = WPO_WCPDF()->settings->get_output_format( $document_type );
 				// allow URL override
-				if ( isset( $_GET['output'] ) && in_array( $_GET['output'], array( 'html', 'pdf' ) ) ) {
-					$output_format = $_GET['output'];
+				if ( isset( $_REQUEST['output'] ) && in_array( $_REQUEST['output'], array( 'html', 'pdf' ) ) ) {
+					$output_format = $_REQUEST['output'];
 				}
 				switch ( $output_format ) {
 					case 'html':
@@ -457,7 +503,7 @@ class Main {
 			return false;
 		}
 
-		return apply_filters( 'wpo_wcpdf_tmp_path_{$type}', $tmp_path );;
+		return apply_filters( "wpo_wcpdf_tmp_path_{$type}", $tmp_path );
 	}
 
 	/**
@@ -504,6 +550,91 @@ class Main {
 			$wp_upload_base = $upload_base;
 		}
 		return $wp_upload_base;
+	}
+
+	/**
+	 * Checks if the tmp subfolder has files
+	 * 
+	 * @param string $subfolder  can be 'attachments', 'fonts' or 'dompdf'
+	 * 
+	 * @return bool
+	 */
+	public function tmp_subfolder_has_files( $subfolder ) {
+		$has_files = false;
+
+		if ( empty( $subfolder ) || ! in_array( $subfolder, $this->subfolders ) ) {
+			wcpdf_log_error( sprintf( 'The directory %s is not a default tmp subfolder from this plugin.', $subfolder ), 'critical' );
+			return $has_files;
+		}
+
+		// we have a cached value
+		if ( get_transient( "wpo_wcpdf_subfolder_{$subfolder}_has_files" ) !== false ) {
+			return wc_string_to_bool( get_transient( "wpo_wcpdf_subfolder_{$subfolder}_has_files" ) );
+		}
+
+		if ( ! function_exists( 'glob' ) ) {
+			wcpdf_log_error( 'PHP glob function not found.', 'critical' );
+			return $has_files;
+		}
+
+		$tmp_path = untrailingslashit( $this->get_tmp_path( $subfolder ) );
+
+		switch ( $subfolder ) {
+			case 'attachments':
+				if ( ! empty( glob( $tmp_path.'/*.pdf' ) ) ) {
+					$has_files = true;
+				}
+				break;
+			case 'fonts':
+				if ( ! empty( glob( $tmp_path.'/*.ttf' ) ) ) {
+					$has_files = true;
+				}
+				break;
+			case 'dompdf':
+				if ( ! empty( glob( $tmp_path.'/*.*' ) ) ) {
+					$has_files = true;
+				}
+				break;
+		}
+
+		// save value to cache
+		set_transient( "wpo_wcpdf_subfolder_{$subfolder}_has_files", ( true === $has_files ) ? 'yes' : 'no' , DAY_IN_SECONDS );
+
+		return $has_files;
+	}
+
+	/**
+	 * Maybe reinstall fonts
+	 * 
+	 * @param bool $force  force fonts reinstall
+	 * 
+	 * @return void
+	 */
+	public function maybe_reinstall_fonts( $force = false ) {
+		if ( false === $this->tmp_subfolder_has_files( 'fonts' ) || true === $force ) {
+			$fonts_path = untrailingslashit( $this->get_tmp_path( 'fonts' ) );
+
+			// clear folder first
+			if ( function_exists( 'glob' ) && $files = glob( $fonts_path.'/*.*' ) ) {
+				$exclude_files = array( 'index.php', '.htaccess' );
+				foreach ( $files as $file ) {
+					if ( is_file( $file ) && ! in_array( basename( $file ), $exclude_files ) ) {
+						unlink( $file );
+					}
+				}
+			} else {
+				wcpdf_log_error( "Couldn't clear fonts tmp subfolder before copy fonts.", 'critical' );
+			}
+
+			// copy fonts
+			$this->copy_fonts( $fonts_path );
+
+			// save to cache
+			if ( get_transient( 'wpo_wcpdf_subfolder_fonts_has_files' ) !== false ) {
+				delete_transient( 'wpo_wcpdf_subfolder_fonts_has_files' );
+			}
+			set_transient( 'wpo_wcpdf_subfolder_fonts_has_files', 'yes' , DAY_IN_SECONDS );
+		}
 	}
 
 	/**
@@ -600,18 +731,25 @@ class Main {
 					?>
 					<div class="error">
 					<?php /* translators: 1. plugin name, 2. directory path */ ?>
-						<p><?php printf( esc_html__( 'The %1$s directory %2$s couldn\'t be created or is not writable!', 'woocommerce-pdf-invoices-packing-slips' ), '<strong>WooCommerce PDF Invoices & Packing Slips</strong>' ,'<code>' . $path . '</code>' ); ?></p>
+						<p><?php printf( esc_html__( 'The %1$s directory %2$s couldn\'t be created or is not writable!', 'woocommerce-pdf-invoices-packing-slips' ), '<strong>PDF Invoices & Packing Slips for WooCommerce</strong>' ,'<code>' . $path . '</code>' ); ?></p>
 						<p><?php esc_html_e( 'Please check your directories write permissions or contact your hosting service provider.', 'woocommerce-pdf-invoices-packing-slips' ); ?></p>
-						<p><a href="<?php echo esc_url( add_query_arg( 'wpo_wcpdf_hide_no_dir_notice', 'true' ) ); ?>"><?php esc_html_e( 'Hide this message', 'woocommerce-pdf-invoices-packing-slips' ); ?></a></p>
+						<p><a href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'wpo_wcpdf_hide_no_dir_notice', 'true' ), 'hide_no_dir_notice_nonce' ) ); ?>"><?php esc_html_e( 'Hide this message', 'woocommerce-pdf-invoices-packing-slips' ); ?></a></p>
 					</div>
 					<?php
 					echo wp_kses_post( ob_get_clean() );
 		
 					// save option to hide notice
-					if ( isset( $_GET['wpo_wcpdf_hide_no_dir_notice'] ) ) {
-						delete_option( 'wpo_wcpdf_no_dir_error', true );
-						wp_redirect( 'admin.php?page=wpo_wcpdf_options_page' );
-						exit;
+					if ( isset( $_REQUEST['wpo_wcpdf_hide_no_dir_notice'] ) && isset( $_REQUEST['_wpnonce'] ) ) {
+						// validate nonce
+						if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'hide_no_dir_notice_nonce' ) ) {
+							wcpdf_log_error( 'You do not have sufficient permissions to perform this action: wpo_wcpdf_hide_no_dir_notice' );
+							wp_redirect( 'admin.php?page=wpo_wcpdf_options_page' );
+							exit;
+						} else {
+							delete_option( 'wpo_wcpdf_no_dir_error' );
+							wp_redirect( 'admin.php?page=wpo_wcpdf_options_page' );
+							exit;
+						}
 					}
 				}
 			}
@@ -732,6 +870,15 @@ class Main {
 		} else {
 			return $allowed;
 		}
+	}
+	
+	public function disable_anonymized( $allowed, $document ) {
+		if ( ! empty( $document->order ) && ! empty( $anonymized = $document->order->get_meta( '_anonymized' ) ) ) {
+			if ( apply_filters( 'wpo_wcpdf_disallow_anonymized_order_document', wc_string_to_bool( $anonymized ), $this ) ) {
+				$allowed = false;
+			}
+		}
+		return $allowed;
 	}
 
 	public function test_mode_settings( $use_historical_settings, $document ) {
@@ -870,18 +1017,7 @@ class Main {
 	 * @return array  Output message
 	 */
 	public function temporary_files_cleanup( $delete_timestamp = 0 ) {
-		global $wp_filesystem;
-
-		$delete_before = ! empty( $delete_timestamp ) ? intval( $delete_timestamp ) : time();
-
-		if ( ! function_exists( 'WP_Filesystem' ) ) {
-			require_once( ABSPATH . 'wp-admin/includes/file.php' );
-		}
-
-		if ( ! WP_Filesystem() ) {
-			return array( 'error' => esc_html__( "WP_Filesystem couldn't be initiated!", 'woocommerce-pdf-invoices-packing-slips' ) );
-		}
-
+		$delete_before    = ! empty( $delete_timestamp ) ? intval( $delete_timestamp ) : time();
 		$paths_to_cleanup = apply_filters( 'wpo_wcpdf_cleanup_tmp_paths', array(
 			$this->get_tmp_path( 'attachments' ),
 			$this->get_tmp_path( 'dompdf' ),
@@ -889,6 +1025,7 @@ class Main {
 		$excluded_files   = apply_filters( 'wpo_wcpdf_cleanup_excluded_files', array(
 			'index.php',
 			'.htaccess',
+			'log.htm',
 		) );
 		$folders_level    = apply_filters( 'wpo_wcpdf_cleanup_folders_level', 3 );
 		$files            = array();
@@ -897,35 +1034,39 @@ class Main {
 		$output           = array();
 
 		foreach ( $paths_to_cleanup as $path ) {
-			$files = array_merge( $files, list_files( $path, $folders_level ) );
+			if ( ! function_exists( 'list_files' ) ) {
+				include_once( ABSPATH.'wp-admin/includes/file.php' );
+			}
+			if ( $listed_files = list_files( $path, $folders_level ) ) {
+				$files = array_merge( $files, $listed_files );
+			}
 		}
 
 		if ( ! empty( $files ) ) {
 			foreach ( $files as $file ) {
 				$basename = wp_basename( $file );
-
-				if ( ! in_array( $basename, $excluded_files ) && $wp_filesystem->exists( $file ) ) {
-					$file_timestamp  = $wp_filesystem->mtime( $file );
+				if ( ! in_array( $basename, $excluded_files ) && file_exists( $file ) ) {
+					$file_timestamp = filemtime( $file );
 
 					// delete file
 					if ( $file_timestamp < $delete_before ) {
-						if ( $wp_filesystem->delete( $file, true ) ) {
+						if ( unlink( $file ) ) {
 							$success++;
 						} else {
 							$error++;
 						}
 					}
 				}
+			}
 
-				if ( $error > 0 ) {
-					/* translators: 1,2. file count  */
-					$message           = sprintf( esc_html__( 'Unable to delete %1$d files! (deleted %2$d)', 'woocommerce-pdf-invoices-packing-slips' ), $error, $success );
-					$output['error']   = $message;
-				} else {
-					/* translators: file count */
-					$message           = sprintf( esc_html__( 'Successfully deleted %d files!', 'woocommerce-pdf-invoices-packing-slips' ), $success );
-					$output['success'] = $message;
-				}
+			if ( $error > 0 ) {
+				/* translators: 1,2. file count  */
+				$message           = sprintf( esc_html__( 'Unable to delete %1$d files! (deleted %2$d)', 'woocommerce-pdf-invoices-packing-slips' ), $error, $success );
+				$output['error']   = $message;
+			} else {
+				/* translators: file count */
+				$message           = sprintf( esc_html__( 'Successfully deleted %d files!', 'woocommerce-pdf-invoices-packing-slips' ), $success );
+				$output['success'] = $message;
 			}
 		} else {
 			$output['success'] = esc_html__( 'Nothing to delete!', 'woocommerce-pdf-invoices-packing-slips' );
@@ -992,57 +1133,239 @@ class Main {
 
 		return $mailArray;
 	}
-
+	
 	/**
-	 * Logs the bulk document creation to the order notes
+	 * Log document creation to order notes
+	 *
+	 * @param object $document
+	 * @param string $trigger
+	 * @return void
 	 */
-	public function log_bulk_to_order_notes( $document ) {
-		/* translators: name/description of the context for document creation logs */
-		$this->log_to_order_notes( $document, __( 'bulk order action', 'woocommerce-pdf-invoices-packing-slips' ) );
-	}
-
-	/**
-	 * Logs the single document creation to the order notes
-	 */
-	public function log_single_to_order_notes( $document ) {
-		/* translators: name/description of the context for document creation logs */
-		$this->log_to_order_notes( $document, __( 'single order action', 'woocommerce-pdf-invoices-packing-slips' ) );
-	}
-
-	/**
-	 * Logs the my account document creation to the order notes
-	 */
-	public function log_my_account_to_order_notes( $document ) {
-		/* translators: name/description of the context for document creation logs */
-		$this->log_to_order_notes( $document, __( 'my account', 'woocommerce-pdf-invoices-packing-slips' ) );
-	}
-
-	/**
-	 * Logs the email attachment document creation to the order notes
-	 */
-	public function log_email_attachment_to_order_notes( $document ) {
-		/* translators: name/description of the context for document creation logs */
-		$this->log_to_order_notes( $document, __( 'email attachment', 'woocommerce-pdf-invoices-packing-slips' ) );
-	}
-
-	/**
-	 * Logs the document creation to the order notes
-	 */
-	public function log_to_order_notes( $document, $created_via ) {
-		if( ! empty( $document ) && ! empty( $order = $document->order ) && ! empty( $created_via ) && isset( WPO_WCPDF()->settings->debug_settings['log_to_order_notes'] ) ) {
-			/* translators: 1. document title, 2. creation source */
+	public function log_document_creation_to_order_notes( $document, $trigger ) {
+		$triggers = $this->get_document_triggers();
+		if ( ! empty( $document ) && isset( WPO_WCPDF()->settings->debug_settings['log_to_order_notes'] ) && ! empty( $trigger ) && array_key_exists( $trigger, $triggers ) ) {
+			/* translators: 1. document title, 2. creation trigger */
 			$message = __( 'PDF %1$s created via %2$s.', 'woocommerce-pdf-invoices-packing-slips' );
-			$note    = sprintf( $message, $document->get_title(), $created_via );
+			$note    = sprintf( $message, $document->get_title(), $triggers[$trigger] );
+			$this->log_to_order_notes( $note, $document );
+		}
+	}
+	
+	/**
+	 * Log document printed to order notes
+	 *
+	 * @param object $document
+	 * @param string $trigger
+	 * @return void
+	 */
+	public function log_document_printed_to_order_notes( $document, $trigger ) {
+		$triggers = array_merge(
+			[ 'manually' => __( 'manually', 'woocommerce-pdf-invoices-packing-slips' ) ],
+			$this->get_document_triggers()
+		);
+		
+		if ( ! empty( $document ) && isset( WPO_WCPDF()->settings->debug_settings['log_to_order_notes'] ) && ! empty( $trigger ) && array_key_exists( $trigger, $triggers ) ) {
+			/* translators: 1. document title, 2. creation trigger */
+			$message = __( '%1$s document marked as printed via %2$s.', 'woocommerce-pdf-invoices-packing-slips' );
+			$note    = sprintf( $message, $document->get_title(), $triggers[$trigger] );
+			$this->log_to_order_notes( $note, $document );
+		}
+	}
+	
+	/**
+	 * Log document unmark printed to order notes
+	 *
+	 * @param object $document
+	 * @param string $trigger
+	 * @return void
+	 */
+	public function log_unmark_document_printed_to_order_notes( $document ) {
+		if ( ! empty( $document ) && isset( WPO_WCPDF()->settings->debug_settings['log_to_order_notes'] ) ) {
+			/* translators: 1. document title, 2. creation trigger */
+			$message = __( '%1$s document unmark printed.', 'woocommerce-pdf-invoices-packing-slips' );
+			$note    = sprintf( $message, $document->get_title() );
+			$this->log_to_order_notes( $note, $document );
+		}
+	}
 
-			if( is_callable( array( $order, 'add_order_note' ) ) ) { // order
+	/**
+	 * Logs to the order notes
+	 *
+	 * @param string $note
+	 * @param object $document
+	 * @return void
+	 */
+	public function log_to_order_notes( $note, $document ) {
+		if ( ! empty( $document ) && ! empty( $order = $document->order ) && ! empty( $note ) ) {			
+			if ( is_callable( array( $order, 'add_order_note' ) ) ) { // order
 				$order->add_order_note( strip_tags( $note ) );
 			} elseif ( $document->is_refund( $order ) ) {            // refund order
 				$parent_order = $document->get_refund_parent( $order );
-				if( ! empty( $parent_order ) && is_callable( array( $parent_order, 'add_order_note' ) ) ) {
+				if ( ! empty( $parent_order ) && is_callable( array( $parent_order, 'add_order_note' ) ) ) {
 					$parent_order->add_order_note( strip_tags( $note ) );
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Get the document triggers
+	 *
+	 * @return array
+	 */
+	public function get_document_triggers() {
+		return apply_filters( 'wpo_wcpdf_document_triggers', [
+			'single'           => __( 'single order action', 'woocommerce-pdf-invoices-packing-slips' ),
+			'bulk'             => __( 'bulk order action', 'woocommerce-pdf-invoices-packing-slips' ),
+			'my_account'       => __( 'my account', 'woocommerce-pdf-invoices-packing-slips' ),
+			'email_attachment' => __( 'email attachment', 'woocommerce-pdf-invoices-packing-slips' ),
+			'document_data'    => __( 'order document data (number and/or date set manually)', 'woocommerce-pdf-invoices-packing-slips' ),
+		] );
+	}
+	
+	/**
+	 * Mark document printed
+	 *
+	 * @return void
+	 */
+	public function mark_document_printed( $document, $trigger ) {
+		$triggers = isset( $document->latest_settings['mark_printed'] ) && is_array( $document->latest_settings['mark_printed'] ) ? $document->latest_settings['mark_printed'] : [];
+		if ( ! empty( $document ) && ! $this->is_document_printed( $document ) ) {
+			if ( ! empty( $order = $document->order ) && ! empty( $trigger ) && in_array( $trigger, $triggers ) && apply_filters( 'wpo_wcpdf_allow_mark_document_printed', true, $document, $trigger ) ) {
+				if ( 'shop_order' === $order->get_type() ) {
+					$data = [
+						'date'    => time(),
+						'trigger' => $trigger,
+					];
+					
+					$order->update_meta_data( "_wcpdf_{$document->slug}_printed", $data );
+					$order->save_meta_data();
+					$this->log_document_printed_to_order_notes( $document, $trigger );
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Unmark document printed
+	 *
+	 * @return void
+	 */
+	public function unmark_document_printed( $document ) {
+		if ( ! empty( $document ) && $this->is_document_printed( $document ) ) {
+			if ( ! empty( $order = $document->order ) && apply_filters( 'wpo_wcpdf_allow_unmark_document_printed', true, $document ) ) {
+				$meta_key = "_wcpdf_{$document->slug}_printed";
+				if ( 'shop_order' === $order->get_type() && ! empty( $order->get_meta( $meta_key ) ) ) {				
+					$order->delete_meta_data( $meta_key );
+					$order->save_meta_data();
+					$this->log_unmark_document_printed_to_order_notes( $document );
+				}
+			}
+		}
+	}
+	
+	/**
+	 * AJAX request for mark/unmark document printed
+	 *
+	 * @return void
+	 */
+	public function document_printed_ajax() {
+		check_ajax_referer( 'printed_wpo_wcpdf', 'security' );
+		
+		$data  = stripslashes_deep( $_REQUEST );
+		$error = 0;
+		
+		if ( ! empty( $data['action'] ) && $data['action'] == "printed_wpo_wcpdf" && ! empty( $data['event'] ) && ! empty( $data['document_type'] ) && ! empty( $data['order_id'] ) && ! empty( $data['trigger'] ) ) {
+			$document        = wcpdf_get_document( esc_attr( $data['document_type'] ), esc_attr( $data['order_id'] ) );
+			$full_permission = WPO_WCPDF()->admin->user_can_manage_document( esc_attr( $data['document_type'] ) );
+			
+			if ( ! empty( $document ) && ! empty( $order = $document->order ) && $full_permission ) {
+				switch ( esc_attr( $data['event'] ) ) {
+					case 'mark':
+						$this->mark_document_printed( $document, esc_attr( $data['trigger'] ) );
+						break;
+					case 'unmark':
+						$this->unmark_document_printed( $document );
+						break;
+				}
+				
+				if ( is_callable( [ $order, 'get_edit_order_url' ] ) ) {
+					wp_redirect( $order->get_edit_order_url() );
+				} else {
+					wp_redirect( admin_url( 'post.php?action=edit&post=' . esc_attr( $data['order_id'] ) ) );
+				}
+			} else {
+				$error++;
+			}
+		} else {
+			$error++;
+		}
+		
+		if ( $error > 0 ) {
+			/* translators: 1. document type, 2. mark/unmark */
+			wp_die( sprintf( esc_html__( "Document of type '$1%s' for the selected order could not be $2%s as printed.", 'woocommerce-pdf-invoices-packing-slips' ), esc_attr( $data['document_type'] ), $event_type ) );
+		}
+	}
+	
+	/**
+	 * Check if a document is printed
+	 *
+	 * @return bool
+	 */
+	public function is_document_printed( $document ) {
+		$is_printed = false;
+		
+		if ( ! empty( $document ) && ! empty( $order = $document->order ) ) {
+			if ( 'shop_order' === $order->get_type() && ! empty( $printed_data = $order->get_meta( "_wcpdf_{$document->slug}_printed" ) ) ) {	
+				$is_printed = true;
+			}
+		}
+		
+		return $is_printed;
+	}
+	
+	/**
+	 * Check if a document can be manually marked as printed
+	 *
+	 * @return bool
+	 */
+	public function document_can_be_manually_marked_printed( $document ) {
+		$can_be_manually_marked_printed = false;
+		
+		if ( empty( $document ) || ( property_exists( $document, 'is_bulk' ) && $document->is_bulk ) ) {
+			return $can_be_manually_marked_printed;
+		}
+		
+		$document->save_settings();
+		
+		$can_be_manually_marked_printed = false;
+		$document_exists                = is_callable( array( $document, 'exists' ) ) ? $document->exists() : false;
+		$document_printed               = $document_exists && is_callable( array( $document, 'printed' ) ) ? $document->printed() : false;
+		$triggers                       = isset( $document->latest_settings['mark_printed'] ) && is_array( $document->latest_settings['mark_printed'] ) ? $document->latest_settings['mark_printed'] : [];
+		$manually_print_enabled         = in_array( 'manually', $triggers ) ? true : false;
+		
+		if ( $document_exists && ! $document_printed && $manually_print_enabled ) {
+			$can_be_manually_marked_printed = true;
+		}
+		
+		return apply_filters( 'wpo_wcpdf_document_can_be_manually_marked_printed', $can_be_manually_marked_printed, $document );
+	}
+	
+	/**
+	 * Get document printed data
+	 *
+	 * @return array
+	 */
+	public function get_document_printed_data( $document ) {
+		$data = [];
+		
+		if ( ! empty( $document ) && $this->is_document_printed( $document ) && ! empty( $order = $document->order ) ) {
+			if ( 'shop_order' === $order->get_type() && ! empty( $printed_data = $order->get_meta( "_wcpdf_{$document->slug}_printed" ) ) ) {	
+				$data = $printed_data;
+			}
+		}
+		
+		return apply_filters( 'wpo_wcpdf_document_printed_data', $data, $document );
 	}
 
 	/**
@@ -1083,6 +1406,7 @@ class Main {
 	public function wc_webhook_trigger( $document, $order ) {
 		do_action( "wpo_wcpdf_webhook_order_{$document->slug}_saved", $order->get_id() );
 	}
+	
 }
 
 endif; // class_exists

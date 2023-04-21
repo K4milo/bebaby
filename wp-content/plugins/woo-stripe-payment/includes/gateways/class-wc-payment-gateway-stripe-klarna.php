@@ -14,12 +14,43 @@ class WC_Payment_Gateway_Stripe_Klarna extends WC_Payment_Gateway_Stripe_Local_P
 
 	protected $payment_method_type = 'klarna';
 
+	private $supported_locales = array(
+		'de-AT',
+		'en-AT',
+		'da-DK',
+		'en-DK',
+		'fi-FI',
+		'sv-FI',
+		'en-FI',
+		'de-DE',
+		'en-DE',
+		'nl-NL',
+		'en-NL',
+		'nb-NO',
+		'en-NO',
+		'sv-SE',
+		'en-SE',
+		'en-GB',
+		'en-US',
+		'es-US',
+		'nl-BE',
+		'fr-BE',
+		'en-BE',
+		'es-ES',
+		'en-ES',
+		'it-IT',
+		'en-IT',
+		'fr-FR',
+		'en-FR',
+		'en-IE'
+	);
+
 	use WC_Stripe_Local_Payment_Intent_Trait;
 
 	public function __construct() {
 		$this->local_payment_type = 'klarna';
-		$this->currencies         = array( 'EUR', 'SEK', 'NOK', 'DKK', 'GBP', 'USD' );
-		$this->countries          = $this->limited_countries = array( 'US', 'AT', 'FI', 'DE', 'NL', 'DK', 'NO', 'SE', 'GB', 'BE', 'ES', 'IT', 'FR', 'IE' );
+		$this->currencies         = array( 'AUD', 'CAD', 'CHF', 'DKK', 'EUR', 'GBP', 'NOK', 'NZD', 'PLN', 'SEK', 'DKK', 'USD' );
+		$this->countries          = $this->limited_countries = array( 'AT', 'AU', 'BE', 'CA', 'CH', 'DE', 'DK', 'ES', 'FI', 'FR', 'GB', 'GR', 'IE', 'IT', 'NL', 'NO', 'NZ', 'PL', 'PT', 'SE', 'US' );
 		$this->id                 = 'stripe_klarna';
 		$this->tab_title          = __( 'Klarna', 'woo-stripe-payment' );
 		$this->token_type         = 'Stripe_Local';
@@ -32,12 +63,17 @@ class WC_Payment_Gateway_Stripe_Klarna extends WC_Payment_Gateway_Stripe_Local_P
 
 	public function get_required_parameters() {
 		return apply_filters( 'wc_stripe_klarna_get_required_parameters', array(
+			'AUD' => array( 'AU' ),
+			'CAD' => array( 'CA' ),
 			'USD' => array( 'US' ),
-			'EUR' => array( 'AT', 'FI', 'DE', 'NL', 'BE', 'ES', 'IT', 'FR', 'IE' ),
+			'EUR' => array( 'AT', 'BE', 'DE', 'ES', 'FI', 'FR', 'GR', 'IE', 'IT', 'NL', 'PT' ),
 			'DKK' => array( 'DK' ),
 			'NOK' => array( 'NO' ),
 			'SEK' => array( 'SE' ),
 			'GBP' => array( 'GB' ),
+			'PLN' => array( 'PL' ),
+			'CHF' => array( 'CH' ),
+			'NZD' => array( 'NZ' )
 		), $this );
 	}
 
@@ -99,6 +135,9 @@ class WC_Payment_Gateway_Stripe_Klarna extends WC_Payment_Gateway_Stripe_Local_P
 				break;
 			default:
 				$locale = strtolower( $country ) . '-' . strtoupper( $country );
+		}
+		if ( ! in_array( $locale, $this->supported_locales, true ) ) {
+			$locale = 'en-US';
 		}
 
 		return $locale;

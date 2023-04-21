@@ -37,7 +37,7 @@ return array(
 		'title'       => __( 'Credit Card Display', 'woo-stripe-payment' ),
 		'type'        => 'select',
 		'class'       => 'wc-enhanced-select',
-		'options'     => wp_list_pluck( $this->get_method_formats(), 'example' ),
+		'options'     => wp_list_pluck( $this->get_payment_method_formats(), 'example' ),
 		'value'       => '',
 		'default'     => 'type_ending_in',
 		'desc_tip'    => true,

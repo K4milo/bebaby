@@ -1,11 +1,12 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 /**
  * Handles scrip enqueuement and output of params needed by the plugin.
  *
  * @package Stripe/Classes
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  */
 class WC_Stripe_Frontend_Scripts {
 
@@ -24,7 +25,10 @@ class WC_Stripe_Frontend_Scripts {
 		'gpay'     => 'https://pay.google.com/gp/p/js/pay.js'
 	);
 
-	public function __construct() {
+	public $assets_api;
+
+	public function __construct( \PaymentPlugins\Stripe\Assets\AssetsApi $assets_api ) {
+		$this->assets_api = $assets_api;
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 		add_action( 'wp_print_scripts', array( $this, 'localize_scripts' ), 5 );
 		add_action( 'wp_print_footer_scripts', array( $this, 'localize_scripts' ), 5 );
@@ -72,13 +76,19 @@ class WC_Stripe_Frontend_Scripts {
 	}
 
 	public function localize_scripts() {
+		$account_id = wc_stripe_get_account_id();
 		$this->localize_script( 'wc-stripe',
 			array(
-				'api_key' => wc_stripe_get_publishable_key(),
-				'account' => wc_stripe_get_account_id(),
-				'page'    => $this->get_page_id(),
-				'version' => stripe_wc()->version(),
-				'mode'    => wc_stripe_mode()
+				'api_key'      => wc_stripe_get_publishable_key(),
+				'account'      => $account_id,
+				'page'         => $this->get_page_id(),
+				'version'      => stripe_wc()->version(),
+				'mode'         => wc_stripe_mode(),
+				'stripeParams' => array(
+					'stripeAccount' => $account_id,
+					'apiVersion'    => '2022-08-01',
+					'betas'         => array()
+				)
 			),
 			'wc_stripe_params_v3'
 		);
@@ -140,7 +150,7 @@ class WC_Stripe_Frontend_Scripts {
 	/**
 	 *
 	 * @param string $handle
-	 * @param array $data
+	 * @param array  $data
 	 * @param string $object_name
 	 */
 	public function localize_script( $handle, $data, $object_name = '' ) {
@@ -170,14 +180,17 @@ class WC_Stripe_Frontend_Scripts {
 	 * @param string $uri
 	 */
 	public function assets_url( $uri = '' ) {
-		// if minification scripts required, convert the uri to it's min format.
-		$uri = ( ( $min = $this->get_min() ) ) ? preg_replace( '/([\w-]+)(\.(?<!min\.)(js|css))$/', '$1' . $min . '$2', $uri ) : $uri;
+		// if minification scripts required, convert the uri to its min format.
+		// don't minify scripts in the build directory
+		if ( strpos( $uri, 'build/' ) !== 0 ) {
+			$uri = ( ( $min = $this->get_min() ) ) ? preg_replace( '/([\w-]+)(\.(?<!min\.)(js|css))$/', '$1' . $min . '$2', $uri ) : $uri;
+		}
 
 		return untrailingslashit( stripe_wc()->assets_url( $uri ) );
 	}
 
 	public function get_min() {
-		return $suffix = SCRIPT_DEBUG ? '' : '.min';
+		return defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 	}
 
 	private function get_page_id() {
@@ -200,4 +213,5 @@ class WC_Stripe_Frontend_Scripts {
 			}
 		}
 	}
+
 }

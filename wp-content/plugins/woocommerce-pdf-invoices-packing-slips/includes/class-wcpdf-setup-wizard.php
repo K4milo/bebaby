@@ -16,7 +16,7 @@ class Setup_Wizard {
 	private $steps  = array();
 	
 	public function __construct() {
-		if ( current_user_can( 'manage_woocommerce' ) ) {
+		if ( WPO_WCPDF()->settings->user_can_manage_settings() ) {
 			add_action( 'admin_menu', array( $this, 'admin_menus' ) );
 			add_action( 'admin_init', array( $this, 'setup_wizard' ) );
 		}
@@ -131,7 +131,7 @@ class Setup_Wizard {
 		<head>
 			<meta name="viewport" content="width=device-width" />
 			<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-			<title><?php esc_html_e( 'WooCommerce PDF Invoices & Packing Slips &rsaquo; Setup Wizard', 'woocommerce-pdf-invoices-packing-slips' ); ?></title>
+			<title><?php esc_html_e( 'PDF Invoices & Packing Slips for WooCommerce &rsaquo; Setup Wizard', 'woocommerce-pdf-invoices-packing-slips' ); ?></title>
 			<?php wp_print_scripts( 'wpo-wcpdf-setup' ); ?>
 			<?php wp_print_scripts( 'wpo-wcpdf-setup-confetti' ); ?>
 			<?php do_action( 'admin_print_styles' ); ?>
@@ -154,13 +154,13 @@ class Setup_Wizard {
 			<h1 class="wpo-plugin-title"><?php esc_html_e( 'PDF Invoices & Packing Slips', 'woocommerce-pdf-invoices-packing-slips' ); ?></h1>
 			<ol class="wpo-progress-bar">
 				<?php foreach ( $output_steps as $step_key => $step ) : ?>
-					<a href="<?php echo esc_attr( $this->get_step_link( $step_key ) ); ?>" ><li><div class="wpo-progress-marker <?php
+					<li class="<?php
 						if ( $step_key === $this->step ) {
 							echo 'active';
 						} elseif ( array_search( $this->step, array_keys( $this->steps ) ) > array_search( $step_key, array_keys( $this->steps ) ) ) {
 							echo 'completed';
 						}
-					?>"></div></li></a>
+					?>"><a href="<?php echo esc_attr( $this->get_step_link( $step_key ) ); ?>" ><div class="wpo-progress-marker"></div></a></li>
 				<?php endforeach; ?>
 			</ol>
 			<?php
@@ -207,7 +207,7 @@ class Setup_Wizard {
 		if ( end( $step_keys ) === $this->step && empty( $step ) ) {
 			return admin_url('admin.php?page=wpo_wcpdf_options_page');
 		}
-		return add_query_arg( 'step', $step );
+		return esc_url_raw( add_query_arg( 'step', $step ) );
 	}
 
 
@@ -240,7 +240,9 @@ class Setup_Wizard {
 						} else {
 							$sanitize_function = 'sanitize_text_field';							
 						}
-
+						
+						$value = stripslashes_deep( $value );
+						
 						if ( is_array( $value ) ) {
 							$settings[$key] = array_map( $sanitize_function, $value );
 						} else {

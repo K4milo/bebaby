@@ -5,6 +5,8 @@
  * @package WooCommerce\Payments\Admin
  */
 
+use WCPay\Core\Server\Request\List_Deposits;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -52,6 +54,15 @@ class WC_REST_Payments_Deposits_Controller extends WC_Payments_REST_Controller {
 		);
 		register_rest_route(
 			$this->namespace,
+			'/' . $this->rest_base . '/download',
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'get_deposits_export' ],
+				'permission_callback' => [ $this, 'check_permission' ],
+			]
+		);
+		register_rest_route(
+			$this->namespace,
 			'/' . $this->rest_base . '/(?P<deposit_id>\w+)',
 			[
 				'methods'             => WP_REST_Server::READABLE,
@@ -87,12 +98,9 @@ class WC_REST_Payments_Deposits_Controller extends WC_Payments_REST_Controller {
 	 * @param WP_REST_Request $request Full data about the request.
 	 */
 	public function get_deposits( $request ) {
-		$page      = (int) $request->get_param( 'page' );
-		$page_size = (int) $request->get_param( 'pagesize' );
-		$sort      = $request->get_param( 'sort' );
-		$direction = $request->get_param( 'direction' );
-		$filters   = $this->get_deposits_filters( $request );
-		return $this->forward_request( 'list_deposits', [ $page, $page_size, $sort, $direction, $filters ] );
+		$wcpay_request = List_Deposits::from_rest_request( $request );
+
+		return $wcpay_request->handle_rest_request( 'wcpay_list_deposits_request' );
 	}
 
 	/**
@@ -127,6 +135,18 @@ class WC_REST_Payments_Deposits_Controller extends WC_Payments_REST_Controller {
 	public function get_deposit( $request ) {
 		$deposit_id = $request->get_param( 'deposit_id' );
 		return $this->forward_request( 'get_deposit', [ $deposit_id ] );
+	}
+
+	/**
+	 * Initiate deposits export via API.
+	 *
+	 * @param WP_REST_Request $request Full data about the request.
+	 */
+	public function get_deposits_export( $request ) {
+		$user_email = $request->get_param( 'user_email' );
+		$filters    = $this->get_deposits_filters( $request );
+
+		return $this->forward_request( 'get_deposits_export', [ $filters, $user_email ] );
 	}
 
 	/**

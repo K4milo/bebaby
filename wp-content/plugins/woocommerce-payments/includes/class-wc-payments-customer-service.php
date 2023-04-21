@@ -5,8 +5,10 @@
  * @package WooCommerce\Payments
  */
 
+use WCPay\Database_Cache;
 use WCPay\Exceptions\API_Exception;
 use WCPay\Logger;
+use WCPay\Constants\Payment_Method;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -37,11 +39,6 @@ class WC_Payments_Customer_Service {
 	const WCPAY_TEST_CUSTOMER_ID_OPTION = '_wcpay_customer_id_test';
 
 	/**
-	 * Payment methods transient. Used in conjunction with the customer_id to cache a customer's payment methods.
-	 */
-	const PAYMENT_METHODS_TRANSIENT = 'wcpay_pm_';
-
-	/**
 	 * Key used to store customer id for non logged in users in WooCommerce Session.
 	 */
 	const CUSTOMER_ID_SESSION_KEY = 'wcpay_customer_id';
@@ -61,17 +58,26 @@ class WC_Payments_Customer_Service {
 	private $account;
 
 	/**
+	 * Database_Cache instance to get information about the account
+	 *
+	 * @var Database_Cache
+	 */
+	private $database_cache;
+
+	/**
 	 * Class constructor
 	 *
 	 * @param WC_Payments_API_Client $payments_api_client Payments API client.
 	 * @param WC_Payments_Account    $account             WC_Payments_Account instance.
+	 * @param Database_Cache         $database_cache       Database_Cache instance.
 	 */
-	public function __construct( WC_Payments_API_Client $payments_api_client, WC_Payments_Account $account ) {
+	public function __construct( WC_Payments_API_Client $payments_api_client, WC_Payments_Account $account, Database_Cache $database_cache ) {
 		$this->payments_api_client = $payments_api_client;
 		$this->account             = $account;
+		$this->database_cache      = $database_cache;
 
 		/*
-		 * Adds the WooComerce Payments customer ID found in the user session
+		 * Adds the WooCommerce Payments customer ID found in the user session
 		 * to the WordPress user as metadata.
 		 *
 		 * This is helpful in scenarios where the shopper begins the checkout flow
@@ -133,8 +139,10 @@ class WC_Payments_Customer_Service {
 			$this->update_user_customer_id( $user->ID, $customer_id );
 		}
 
-		// Save the customer id in the session for non logged in users to reuse it in payments.
-		WC()->session->set( self::CUSTOMER_ID_SESSION_KEY, $customer_id );
+		if ( isset( WC()->session ) ) {
+			// Save the customer id in the session for non logged in users to reuse it in payments.
+			WC()->session->set( self::CUSTOMER_ID_SESSION_KEY, $customer_id );
+		}
 
 		return $customer_id;
 	}
@@ -205,10 +213,10 @@ class WC_Payments_Customer_Service {
 		}
 
 		$cache_payment_methods = ! WC_Payments::is_network_saved_cards_enabled();
-		$transient_key         = self::PAYMENT_METHODS_TRANSIENT . $customer_id . '_' . $type;
+		$cache_key             = Database_Cache::PAYMENT_METHODS_KEY_PREFIX . $customer_id . '_' . $type;
 
 		if ( $cache_payment_methods ) {
-			$payment_methods = get_transient( $transient_key );
+			$payment_methods = $this->database_cache->get( $cache_key );
 			if ( is_array( $payment_methods ) ) {
 				return $payment_methods;
 			}
@@ -217,7 +225,7 @@ class WC_Payments_Customer_Service {
 		try {
 			$payment_methods = $this->payments_api_client->get_payment_methods( $customer_id, $type )['data'];
 			if ( $cache_payment_methods ) {
-				set_transient( $transient_key, $payment_methods, DAY_IN_SECONDS );
+				$this->database_cache->add( $cache_key, $payment_methods );
 			}
 			return $payment_methods;
 
@@ -261,9 +269,11 @@ class WC_Payments_Customer_Service {
 		if ( WC_Payments::is_network_saved_cards_enabled() ) {
 			return; // No need to do anything, payment methods will never be cached in this case.
 		}
-		$customer_id = $this->get_customer_id_by_user_id( $user_id );
-		foreach ( WC_Payments::get_gateway()->get_upe_enabled_payment_method_ids() as $type ) {
-			delete_transient( self::PAYMENT_METHODS_TRANSIENT . $customer_id . '_' . $type );
+
+		$retrievable_payment_method_types = [ Payment_Method::CARD, Payment_Method::SEPA ];
+		$customer_id                      = $this->get_customer_id_by_user_id( $user_id );
+		foreach ( $retrievable_payment_method_types as $type ) {
+			$this->database_cache->delete( Database_Cache::PAYMENT_METHODS_KEY_PREFIX . $customer_id . '_' . $type );
 		}
 	}
 
@@ -328,6 +338,15 @@ class WC_Payments_Customer_Service {
 	}
 
 	/**
+	 * Delete all saved payment methods that are stored inside database cache driver.
+	 *
+	 * @return void
+	 */
+	public function delete_cached_payment_methods() {
+		$this->database_cache->delete_by_prefix( Database_Cache::PAYMENT_METHODS_KEY_PREFIX );
+	}
+
+	/**
 	 * Recreates the customer for this user.
 	 *
 	 * @param WP_User $user          User to recreate a customer for.
@@ -355,7 +374,7 @@ class WC_Payments_Customer_Service {
 	 * @return string The customer ID option name.
 	 */
 	private function get_customer_id_option(): string {
-		return WC_Payments::get_gateway()->is_in_test_mode()
+		return WC_Payments::mode()->is_test()
 			? self::WCPAY_TEST_CUSTOMER_ID_OPTION
 			: self::WCPAY_LIVE_CUSTOMER_ID_OPTION;
 	}
@@ -433,7 +452,10 @@ class WC_Payments_Customer_Service {
 	 */
 	public function add_customer_id_to_user( $user_id ) {
 		// Not processing a checkout, bail.
-		if ( ! defined( 'WOOCOMMERCE_CHECKOUT' ) || ! WOOCOMMERCE_CHECKOUT ) {
+		if (
+			! ( defined( 'WOOCOMMERCE_CHECKOUT' ) && WOOCOMMERCE_CHECKOUT ) &&
+			! ( function_exists( 'wcs_is_checkout_blocks_api_request' ) && wcs_is_checkout_blocks_api_request( 'v1/checkout' ) )
+		) {
 			return;
 		}
 
@@ -445,5 +467,51 @@ class WC_Payments_Customer_Service {
 		}
 
 		$this->update_user_customer_id( $user_id, $customer_id );
+	}
+
+	/**
+	 * Prepares customer data to be used on 'Pay for Order' or 'Add Payment Method' pages.
+	 * Customer data is retrieved from order when on Pay for Order.
+	 * Customer data is retrieved from customer when on 'Add Payment Method'.
+	 *
+	 * @return array|null An array with customer data or nothing.
+	 */
+	public function get_prepared_customer_data() {
+		if ( ! isset( $_GET['pay_for_order'] ) && ! is_add_payment_method_page() ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return null;
+		}
+
+		global $wp;
+		$user_email = '';
+		$firstname  = '';
+		$lastname   = '';
+
+		if ( isset( $_GET['pay_for_order'] ) && 'true' === $_GET['pay_for_order'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$order_id = absint( $wp->query_vars['order-pay'] );
+			$order    = wc_get_order( $order_id );
+
+			if ( is_a( $order, 'WC_Order' ) ) {
+				$firstname  = $order->get_billing_first_name();
+				$lastname   = $order->get_billing_last_name();
+				$user_email = $order->get_billing_email();
+			}
+		}
+
+		if ( is_add_payment_method_page() ) {
+			$user = wp_get_current_user();
+
+			if ( $user->ID ) {
+				$firstname  = $user->user_firstname;
+				$lastname   = $user->user_lastname;
+				$user_email = get_user_meta( $user->ID, 'billing_email', true );
+				$user_email = $user_email ? $user_email : $user->user_email;
+			}
+		}
+		$prepared_customer_data = [
+			'name'  => $firstname . ' ' . $lastname,
+			'email' => $user_email,
+		];
+
+		return $prepared_customer_data;
 	}
 }

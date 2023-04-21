@@ -1,12 +1,13 @@
 <?php
+
 defined( 'ABSPATH' ) || exit();
 
 /**
  * Class that manages customer creation and custom updates.
  *
- * @since 3.0.0
+ * @since   3.0.0
  * @package Stripe/Classes
- * @author PaymentPlugins
+ * @author  PaymentPlugins
  *
  */
 class WC_Stripe_Customer_Manager {
@@ -27,9 +28,30 @@ class WC_Stripe_Customer_Manager {
 	}
 
 	/**
+	 * Returns true if the plugin should create a Stripe customer if the user has an account
+	 * with the store
+	 *
+	 * @since 3.3.38
+	 * @return bool
+	 */
+	public function should_create_when_account_exists() {
+		return stripe_wc()->advanced_settings->get_option( 'customer_creation' ) === 'account_creation';
+	}
+
+	/**
+	 * Returns true if the plugin should create a Stripe customer when the payment is being processed.
+	 *
+	 * @since 3.3.38
+	 * @return bool
+	 */
+	public function should_create_when_payment() {
+		return stripe_wc()->advanced_settings->get_option( 'customer_creation' ) === 'payment';
+	}
+
+	/**
 	 *
 	 * @param WC_Customer $customer
-	 * @param array $data
+	 * @param array       $data
 	 */
 	public function checkout_update_customer( $customer, $data ) {
 		if ( $this->user_has_id( $customer ) ) {
@@ -42,12 +64,14 @@ class WC_Stripe_Customer_Manager {
 				}
 			}
 		} else {
-			// create the customer
-			$response = $this->create_customer( $customer );
-			if ( ! is_wp_error( $response ) ) {
-				wc_stripe_save_customer( $response->id, $customer->get_id() );
-			} else {
-				wc_add_notice( sprintf( __( 'Error saving customer. Reason: %s', 'woo-stripe-payment' ), $response->get_error_message() ), 'error' );
+			if ( isset( $data['payment_method'] ) && strpos( $data['payment_method'], 'stripe_' ) !== false ) {
+				// create the customer since this is a Stripe payment
+				$response = $this->create_customer( $customer );
+				if ( ! is_wp_error( $response ) ) {
+					wc_stripe_save_customer( $response->id, $customer->get_id() );
+				} else {
+					wc_add_notice( sprintf( __( 'Error saving customer. Reason: %s', 'woo-stripe-payment' ), $response->get_error_message() ), 'error' );
+				}
 			}
 		}
 	}
@@ -58,8 +82,8 @@ class WC_Stripe_Customer_Manager {
 	 *
 	 * @return \Stripe\Customer|WP_Error
 	 */
-	public function create_customer( $customer ) {
-		return WC_Stripe_Gateway::load()->customers->create( apply_filters( 'wc_stripe_customer_args', $this->get_customer_args( $customer ) ) );
+	public function create_customer( $customer, $mode = null ) {
+		return WC_Stripe_Gateway::load( $mode )->customers->create( apply_filters( 'wc_stripe_customer_args', $this->get_customer_args( $customer ) ) );
 	}
 
 	/**
@@ -82,9 +106,11 @@ class WC_Stripe_Customer_Manager {
 		$customer = WC()->customer;
 		if ( $customer && $customer->get_id() ) {
 			if ( ! $this->user_has_id( $customer ) ) {
-				$response = $this->create_customer( $customer );
-				if ( ! is_wp_error( $response ) ) {
-					wc_stripe_save_customer( $response->id, $customer->get_id() );
+				if ( $this->should_create_when_account_exists() ) {
+					$response = $this->create_customer( $customer );
+					if ( ! is_wp_error( $response ) ) {
+						wc_stripe_save_customer( $response->id, $customer->get_id() );
+					}
 				}
 			}
 		}
@@ -99,8 +125,8 @@ class WC_Stripe_Customer_Manager {
 
 		// this customer may have an ID from another plugin. Check that too.
 		if ( empty( $id ) ) {
-			$id = get_user_option( '_stripe_customer_id', $customer->get_id() );
-			if ( ! empty( $id ) ) {
+			$id = get_user_option( WC_Stripe_Constants::STRIPE_CUSTOMER_ID, $customer->get_id() );
+			if ( ! empty( $id ) && is_string( $id ) ) {
 				// validate that this customer exists in the Stripe gateway
 				$response = WC_Stripe_Gateway::load()->customers->retrieve( $id );
 				if ( ! is_wp_error( $response ) ) {
@@ -122,7 +148,7 @@ class WC_Stripe_Customer_Manager {
 	 * Syncs the WC database payment methods with the payment methods stored in Stripe.
 	 *
 	 * @param string $customer_id
-	 * @param int $user_id
+	 * @param int    $user_id
 	 *
 	 * @since 3.1.0
 	 */
@@ -138,7 +164,6 @@ class WC_Stripe_Customer_Manager {
 				 */
 				if ( ! WC_Payment_Token_Stripe::token_exists( $payment_method->id, $user_id ) ) {
 					$payment_gateways = WC()->payment_gateways()->payment_gateways();
-					$gateway_id       = null;
 					$gateway_id       = 'stripe_cc';
 					if ( isset( $payment_method->card->wallet->type ) ) {
 						switch ( $payment_method->card->wallet->type ) {
@@ -153,9 +178,9 @@ class WC_Stripe_Customer_Manager {
 					/**
 					 *
 					 * @var WC_Payment_Gateway_Stripe_CC $payment_gateway
-					 */ {
-						$payment_gateway = $payment_gateways[ $gateway_id ];
-					}
+					 */
+					$payment_gateway = $payment_gateways[ $gateway_id ];
+
 					$token = $payment_gateway->get_payment_token( $payment_method->id, $payment_method );
 					$token->set_environment( $payment_method->livemode ? 'live' : 'test' );
 					$token->set_user_id( $user_id );
@@ -206,10 +231,10 @@ class WC_Stripe_Customer_Manager {
 	 * Return an array of args used to create or update a customer.
 	 *
 	 * @param WC_Customer $customer
-	 * @param string $context
+	 * @param string      $context
 	 *
-	 * @return array
 	 * @since 3.2.12
+	 * @return array
 	 */
 	private function get_customer_args( $customer, $context = 'create' ) {
 		$args = array(
@@ -235,6 +260,7 @@ class WC_Stripe_Customer_Manager {
 
 		return $args;
 	}
+
 }
 
 WC_Stripe_Customer_Manager::instance();

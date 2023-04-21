@@ -8,59 +8,36 @@ import { ToggleControl } from '@wordpress/components';
 /**
  * A combination of toggle controls for content visibility in product grids.
  *
- * @param {Object} props Incoming props for the component.
+ * @param {Object}            props          Incoming props for the component.
  * @param {function(any):any} props.onChange
- * @param {Object} props.settings
+ * @param {Object}            props.settings
  */
 const GridContentControl = ( { onChange, settings } ) => {
-	const { button, price, rating, title } = settings;
+	const { image, button, price, rating, title } = settings;
+	// If `image` is undefined, that might be because it's a block that was
+	// created before the `image` attribute existed, so we default to true.
+	const imageIsVisible = image !== false;
 	return (
 		<>
 			<ToggleControl
-				label={ __( 'Product title', 'woo-gutenberg-products-block' ) }
-				help={
-					title
-						? __(
-								'Product title is visible.',
-								'woo-gutenberg-products-block'
-						  )
-						: __(
-								'Product title is hidden.',
-								'woo-gutenberg-products-block'
-						  )
+				label={ __( 'Product image', 'woo-gutenberg-products-block' ) }
+				checked={ imageIsVisible }
+				onChange={ () =>
+					onChange( { ...settings, image: ! imageIsVisible } )
 				}
+			/>
+			<ToggleControl
+				label={ __( 'Product title', 'woo-gutenberg-products-block' ) }
 				checked={ title }
 				onChange={ () => onChange( { ...settings, title: ! title } ) }
 			/>
 			<ToggleControl
 				label={ __( 'Product price', 'woo-gutenberg-products-block' ) }
-				help={
-					price
-						? __(
-								'Product price is visible.',
-								'woo-gutenberg-products-block'
-						  )
-						: __(
-								'Product price is hidden.',
-								'woo-gutenberg-products-block'
-						  )
-				}
 				checked={ price }
 				onChange={ () => onChange( { ...settings, price: ! price } ) }
 			/>
 			<ToggleControl
 				label={ __( 'Product rating', 'woo-gutenberg-products-block' ) }
-				help={
-					rating
-						? __(
-								'Product rating is visible.',
-								'woo-gutenberg-products-block'
-						  )
-						: __(
-								'Product rating is hidden.',
-								'woo-gutenberg-products-block'
-						  )
-				}
 				checked={ rating }
 				onChange={ () => onChange( { ...settings, rating: ! rating } ) }
 			/>
@@ -69,17 +46,6 @@ const GridContentControl = ( { onChange, settings } ) => {
 					'Add to Cart button',
 					'woo-gutenberg-products-block'
 				) }
-				help={
-					button
-						? __(
-								'Add to Cart button is visible.',
-								'woo-gutenberg-products-block'
-						  )
-						: __(
-								'Add to Cart button is hidden.',
-								'woo-gutenberg-products-block'
-						  )
-				}
 				checked={ button }
 				onChange={ () => onChange( { ...settings, button: ! button } ) }
 			/>
@@ -92,6 +58,7 @@ GridContentControl.propTypes = {
 	 * The current title visibility.
 	 */
 	settings: PropTypes.shape( {
+		image: PropTypes.bool.isRequired,
 		button: PropTypes.bool.isRequired,
 		price: PropTypes.bool.isRequired,
 		rating: PropTypes.bool.isRequired,

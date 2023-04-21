@@ -11,9 +11,8 @@ defined( 'ABSPATH' ) || exit();
 class WC_Stripe_Admin_Menus {
 
 	public static function init() {
-		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ), 10 );
+		//add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ), 10 );
 		add_action( 'admin_menu', array( __CLASS__, 'sub_menu' ), 20 );
-		add_action( 'admin_menu', array( __CLASS__, 'remove_submenu' ), 30 );
 	}
 
 	public static function admin_menu() {
@@ -21,15 +20,15 @@ class WC_Stripe_Admin_Menus {
 	}
 
 	public static function sub_menu() {
-		add_submenu_page( 'wc_stripe', __( 'Settings', 'woo-stripe-payment' ), __( 'Settings', 'woo-stripe-payment' ), 'manage_woocommerce', 'admin.php?page=wc-settings&tab=checkout&section=stripe_api' );
-		add_submenu_page( 'wc_stripe', __( 'Logs', 'woo-stripe-payment' ), __( 'Logs', 'woo-stripe-payment' ), 'manage_woocommerce', 'admin.php?page=wc-status&tab=logs' );
-		add_submenu_page( 'wc_stripe', __( 'Documentation', 'woo-stripe-payment' ), __( 'Documentation', 'woo-stripe-payment' ), 'manage_woocommerce', 'https://docs.paymentplugins.com/wc-stripe/config' );
+		add_submenu_page( 'woocommerce', __( 'Stripe by Payment Plugins', 'woo-stripe-payment' ), __( 'Stripe by Payment Plugins', 'woo-stripe-payment' ), 'manage_woocommerce', 'wc-stripe-main', array( __CLASS__, 'main_page' ) );
 	}
 
-	public static function remove_submenu() {
-		global $submenu;
-		if ( isset( $submenu['wc_stripe'] ) ) {
-			unset( $submenu['wc_stripe'][0] );
+	public static function main_page() {
+		if ( isset( $_GET['section'] ) ) {
+			$section = sanitize_text_field( $_GET['section'] );
+			do_action( 'wc_stripe_admin_section_' . $section );
+		} else {
+			WC_Stripe_Admin_Welcome::output();
 		}
 	}
 

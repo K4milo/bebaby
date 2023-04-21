@@ -170,6 +170,11 @@ class Vary extends Root {
 			return;
 		}
 
+		/* @ref https://wordpress.org/support/topic/checkout-add-to-cart-executed-twice/ */
+		if ( ! empty( $_GET[ 'litespeed_guest_off' ] ) ) {
+			return;
+		}
+
 		Debug2::debug( '[Vary] 👒👒 Guest mode' );
 
 		! defined( 'LITESPEED_GUEST' ) && define( 'LITESPEED_GUEST', true );
@@ -347,7 +352,7 @@ class Vary extends Root {
 		 * POST request can set vary to fix #820789 login "loop" guest cache issue
 		 * @since 1.6.5
 		 */
-		if ( $_SERVER["REQUEST_METHOD"] !== 'GET' && $_SERVER["REQUEST_METHOD"] !== 'POST' ) {
+		if ( isset( $_SERVER["REQUEST_METHOD"] ) && $_SERVER["REQUEST_METHOD"] !== 'GET' && $_SERVER["REQUEST_METHOD"] !== 'POST' ) {
 			Debug2::debug( '[Vary] can_change_vary bypassed due to method not get/post' );
 			return false;
 		}
@@ -424,10 +429,16 @@ class Vary extends Root {
 	public function in_vary_group( $role ) {
 		$group = 0;
 		$vary_groups = $this->conf( Base::O_CACHE_VARY_GROUP );
-		if ( array_key_exists( $role, $vary_groups ) ) {
-			$group = $vary_groups[ $role ];
+
+		$roles = explode( ',', $role );
+		if ( $found = array_intersect( $roles, array_keys( $vary_groups ) ) ) {
+			$groups = array();
+			foreach ( $found as $curr_role ) {
+				$groups[] = $vary_groups[ $curr_role ];
+			}
+			$group = implode( ',', array_unique( $groups ) );
 		}
-		elseif ( $role === 'administrator' ) {
+		elseif ( in_array( 'administrator', $roles ) ) {
 			$group = 99;
 		}
 

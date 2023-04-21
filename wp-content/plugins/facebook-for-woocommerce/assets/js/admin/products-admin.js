@@ -407,10 +407,11 @@ jQuery( document ).ready( function( $ ) {
 
 			let syncValuesStatus = $syncModeSelect.map( function ( index, selectElement ) {
 
-				let $syncMode     = $( selectElement );
-				let syncModeValue = $syncMode.val();
+				let $syncMode     	   = $( selectElement );
+				let syncModeValue 	   = $syncMode.val();
+				let isProductPublished = !! facebook_for_woocommerce_products_admin.is_product_published;
 
-				return 'sync_disabled' === syncModeValue && syncModeValue !== $syncMode.attr( 'data-original-value' );
+				return isProductPublished && 'sync_disabled' === syncModeValue && syncModeValue !== $syncMode.attr( 'data-original-value' );
 			} ).toArray();
 
 			return syncValuesStatus.indexOf( true ) > -1;
@@ -565,6 +566,16 @@ jQuery( document ).ready( function( $ ) {
 		$( '#_virtual' ).on( 'change', function () {
 			toggleSyncAndShowOption( ! $( this ).prop( 'checked' ), simpleProductSyncModeSelect );
 		} ).trigger( 'change' );
+
+		// Update the sync when catalog visibility changes.
+		$( 'input[name=_visibility]' ).on ( 'change', function(){
+			if ( $( this ).val() !== 'hidden' && $( this ).val() !== 'search' ) {
+
+				if ( simpleProductSyncModeSelect.val() === 'sync_disabled' ) {
+					simpleProductSyncModeSelect.val( 'sync_and_show' ).trigger( 'change' );;
+				}
+			}
+		})
 
 		const $productData = $( '#woocommerce-product-data' );
 

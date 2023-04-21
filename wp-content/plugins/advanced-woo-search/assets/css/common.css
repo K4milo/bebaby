@@ -113,7 +113,7 @@
 }
 
 /* Mobile zoom disable */
-@media screen and (-webkit-min-device-pixel-ratio:0) and (max-device-width:1024px) {
+@media screen and (-webkit-min-device-pixel-ratio:0) and (max-width:1024px) {
     .aws-container .aws-search-field {
         font-size: 16px;
     }
@@ -355,6 +355,7 @@
     margin: 0 6px 0 0;
     position: relative;
     top: -2px;
+    left: 3px;
 }
 
 .aws-search-result .aws_result_featured svg {

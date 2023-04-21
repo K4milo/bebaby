@@ -9,16 +9,20 @@ declare(strict_types=1);
 
 namespace WooCommerce\PayPalCommerce\Button;
 
-use Dhii\Container\ServiceProvider;
-use Dhii\Modular\Module\ModuleInterface;
+use WooCommerce\PayPalCommerce\Button\Endpoint\CartScriptParamsEndpoint;
+use WooCommerce\PayPalCommerce\Button\Endpoint\SaveCheckoutFormEndpoint;
+use WooCommerce\PayPalCommerce\Button\Endpoint\ValidateCheckoutEndpoint;
+use WooCommerce\PayPalCommerce\Vendor\Dhii\Container\ServiceProvider;
+use WooCommerce\PayPalCommerce\Vendor\Dhii\Modular\Module\ModuleInterface;
 use WooCommerce\PayPalCommerce\Button\Assets\SmartButtonInterface;
 use WooCommerce\PayPalCommerce\Button\Endpoint\ApproveOrderEndpoint;
 use WooCommerce\PayPalCommerce\Button\Endpoint\ChangeCartEndpoint;
 use WooCommerce\PayPalCommerce\Button\Endpoint\CreateOrderEndpoint;
 use WooCommerce\PayPalCommerce\Button\Endpoint\DataClientIdEndpoint;
+use WooCommerce\PayPalCommerce\Button\Endpoint\StartPayPalVaultingEndpoint;
 use WooCommerce\PayPalCommerce\Button\Helper\EarlyOrderHandler;
-use Interop\Container\ServiceProviderInterface;
-use Psr\Container\ContainerInterface;
+use WooCommerce\PayPalCommerce\Vendor\Interop\Container\ServiceProviderInterface;
+use WooCommerce\PayPalCommerce\Vendor\Psr\Container\ContainerInterface;
 
 /**
  * Class ButtonModule
@@ -94,7 +98,7 @@ class ButtonModule implements ModuleInterface {
 	 *
 	 * @param ContainerInterface $container The Container.
 	 */
-	private function register_ajax_endpoints( ContainerInterface $container ) {
+	private function register_ajax_endpoints( ContainerInterface $container ): void {
 		add_action(
 			'wc_ajax_' . DataClientIdEndpoint::ENDPOINT,
 			static function () use ( $container ) {
@@ -104,6 +108,15 @@ class ButtonModule implements ModuleInterface {
 				 *
 				 * @var DataClientIdEndpoint $endpoint
 				 */
+				$endpoint->handle_request();
+			}
+		);
+		add_action(
+			'wc_ajax_' . StartPayPalVaultingEndpoint::ENDPOINT,
+			static function () use ( $container ) {
+				$endpoint = $container->get( 'button.endpoint.vault-paypal' );
+				assert( $endpoint instanceof StartPayPalVaultingEndpoint );
+
 				$endpoint->handle_request();
 			}
 		);
@@ -143,6 +156,34 @@ class ButtonModule implements ModuleInterface {
 				 *
 				 * @var CreateOrderEndpoint $endpoint
 				 */
+				$endpoint->handle_request();
+			}
+		);
+
+		add_action(
+			'wc_ajax_' . SaveCheckoutFormEndpoint::ENDPOINT,
+			static function () use ( $container ) {
+				$endpoint = $container->get( 'button.endpoint.save-checkout-form' );
+				assert( $endpoint instanceof SaveCheckoutFormEndpoint );
+
+				$endpoint->handle_request();
+			}
+		);
+
+		add_action(
+			'wc_ajax_' . ValidateCheckoutEndpoint::ENDPOINT,
+			static function () use ( $container ) {
+				$endpoint = $container->get( 'button.endpoint.validate-checkout' );
+				assert( $endpoint instanceof ValidateCheckoutEndpoint );
+				$endpoint->handle_request();
+			}
+		);
+
+		add_action(
+			'wc_ajax_' . CartScriptParamsEndpoint::ENDPOINT,
+			static function () use ( $container ) {
+				$endpoint = $container->get( 'button.endpoint.cart-script-params' );
+				assert( $endpoint instanceof CartScriptParamsEndpoint );
 				$endpoint->handle_request();
 			}
 		);

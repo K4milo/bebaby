@@ -35,7 +35,7 @@ export const useAfterProcessLocalPayment = (
                         let result = await stripe[confirmationMethod](client_secret, {
                             payment_method: {
                                 billing_details: getBillingDetailsFromAddress(currentBillingData.current),
-                                ...currentPaymentMethodArgs.current()
+                                ...currentPaymentMethodArgs.current(currentBillingData.current)
                             },
                             return_url
                         });
