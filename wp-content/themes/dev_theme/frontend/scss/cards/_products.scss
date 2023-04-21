@@ -1,5 +1,6 @@
 .card-product {
   background-color: $white;
+  box-shadow: 0 0 rem(10px) $rose-2;
   margin-bottom: rem(70px);
   position: relative;
   transition: all .35s ease-in-out;
@@ -29,7 +30,7 @@
   }
 
   &__caption {
-    padding: rem(5px) rem(20px) rem(16px);
+    padding: rem(5px) rem(20px) rem(46px);
     text-align: center;
 
     h2 {
@@ -37,12 +38,16 @@
 
       color: $black;
     }
+
+    .star-rating {
+      margin: rem(8px) auto;
+    }
   }
 
   &__title {
     @extend %h3;
 
-    color: $black;
+    color: $gold-dk;
     text-decoration: none;
   }
 
@@ -52,7 +57,7 @@
     &-ammount {
       @extend %h3;
 
-      background-color: $coffee;
+      background-color: $rose-2;
       color: $white;
       display: inline-block;
       padding: rem(5px);

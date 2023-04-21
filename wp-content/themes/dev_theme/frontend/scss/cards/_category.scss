@@ -17,10 +17,10 @@
   }
 
   &__caption {
-    background-color: rgba($black, .85);
+    background-color: rgba($stick-rose, .85);
     bottom: 0;
     display: flex;
-    color: $gold;
+    color: $gold-dk;
     justify-content: center;
     padding: rem(16px);
     position: absolute;
@@ -30,7 +30,7 @@
 
   &__title {
     @extend %h2;
-    color: $white;
+    color: $gold-dk;
     text-align: center;
   }
 

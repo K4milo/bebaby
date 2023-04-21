@@ -9,36 +9,40 @@
 
   &__image {
     display: block;
+    a {
+      display: block;
+      @include fluid-aspect(4 3);
 
-    img {
-      width: 100%;
-      height: auto;
+      @include from(l) {
+        @include fluid-aspect(16 5);
+      }
     }
   }
 
   &__caption {
-    background-color: rgba($gold-dk, 0.7);
+    background-color: rgba($rose-2, .7);
+    border-bottom: rem(1px) solid $white;
+    border-top: rem(1px) solid $white;
     color: $white;
     display: block;
     padding: rem(20px);
     width: 100%;
 
     @include from(l) {
-      @include center('vertical');
+      @include center('both');
 
       right: 0;
       padding: rem(40px) rem(60px);
-      max-width: 50%;
-    }
-
-    @include from(xl) {
-      max-width: 45%;
+      text-align: center;
+      max-width: rem(450px);
     }
 
     h2 {
       @extend %eyebrow;
 
       line-height: 1;
+      font-size: rem(20px);
+      margin-bottom: rem(26px);
     }
 
     h3 {

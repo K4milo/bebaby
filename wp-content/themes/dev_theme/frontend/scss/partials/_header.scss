@@ -1,7 +1,7 @@
 .main-menu {
-  background-color: $black;
-  border-bottom: rem(1px) solid rgba($gold, .2);
-  border-top: rem(1px) solid rgba($gold, .2);
+  background-color: $white;
+  border-bottom: rem(1px) solid $gold;
+  border-top: rem(1px) solid $gold;
 
   &__logo {
     @include iconBg('../images/brand/logo.svg');
@@ -11,6 +11,7 @@
     @include from(l) {
       width: rem(180px);
       height: rem(163px);
+      margin: 0 auto rem(20px);
     }
   }
 
@@ -37,10 +38,11 @@
 
     > li {
       @include from (l) {
-        margin-left: rem(60px);
+        border-left: rem(1px) solid $gold;
+        padding: rem(5px) rem(16px);
 
         &:first-child {
-          margin-left: 0;
+          border-left: none;
         }
       }
 
@@ -88,7 +90,7 @@
   }
 
   &__link {
-    color: $gold;
+    color: $gold-dk;
     padding: rem(16px);
     text-align: center;
 
@@ -98,7 +100,7 @@
     }
 
     &:hover {
-      color: $brand-white;
+      color: $gold;
     }
   }
 }

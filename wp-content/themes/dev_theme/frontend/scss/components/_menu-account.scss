@@ -32,9 +32,9 @@
   }
 
   &__icon {
-    background-color: $gold;
+    background-color: $stick-rose;
     border-radius: 100%;
-    color: $brand-bg;
+    color: $rose-2;
     cursor: pointer;
     font-size: rem(22px);
     height: rem(45px);
@@ -43,7 +43,8 @@
     width: rem(45px);
 
     &:hover {
-      background-color: $sun;
+      background-color: $rose-2;
+      color: $stick-rose;
     }
   }
 

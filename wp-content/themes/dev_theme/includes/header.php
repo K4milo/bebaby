@@ -42,21 +42,21 @@
 <div class="top-menu">
   <div class="container">
     <div class="row">
-      <div class="col-7 col-lg-8">
+      <div class="col-7 col-lg-11">
         <div class="row align-items-center">
-          <div class="col-4">
-          <a class="navbar-brand main-menu__logo" href="<?php echo home_url('/'); ?>">
-            <?php echo esc_attr(get_bloginfo('name', 'display')); ?>
-          </a>
+          <div class="col-12">
+            <a class="navbar-brand main-menu__logo" href="<?php echo home_url('/'); ?>">
+              <?php echo esc_attr(get_bloginfo('name', 'display')); ?>
+            </a>
           </div>
-          <div class="col-8">
+          <!--div class="col-8">
           <?php
-          storefront_product_search();
+          // storefront_product_search();
           ?>
-          </div>
+          </div-->
         </div>
       </div>
-      <div class="col-5 col-lg-4">
+      <div class="col-5 col-lg-1">
         <nav class="menu-account">
           <ul class="menu-account__wrapper">
             <li class="menu-account__item">

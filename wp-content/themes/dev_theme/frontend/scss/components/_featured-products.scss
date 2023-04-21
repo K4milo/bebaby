@@ -1,6 +1,9 @@
 .featured-products {
-  background-color: $bone;
-  padding-bottom: rem(30px);
+  background-color: $white;
+  border-bottom: rem(1px) solid $gold;
+  border-top: rem(1px) solid $gold;
+  margin: rem(16px) auto rem(20px);
+  padding: rem(30px) rem(16px);
 
   &__content {
     padding: rem(25px) 0;
@@ -17,8 +20,10 @@
 
     p {
       color: $text;
-      display: inline-block;
-      max-width: rem(600px);
+      display: block;
+      max-width: rem(870px);
+      margin: 0 auto rem(16px);
+      text-align: center;
     }
   }
 }

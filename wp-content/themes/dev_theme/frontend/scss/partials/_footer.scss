@@ -1,12 +1,12 @@
 .site-footer {
-  background-color: $black;
-  color: $white;
+  background-color: $white;
+  color: $black;
   clear: both;
   display: block;
 
   a {
     @extend %body-s;
-    color: $white;
+    color: $black;
     text-decoration: none;
 
     &:hover {
@@ -38,14 +38,14 @@
 
   &__widget {
     .widget {
-      color: $white;
+      color: $black;
 
       h2, h3, .widget-title {
-        color: $white;
+        color: $black;
       }
 
       a {
-        color: $white;
+        color: $black;
 
         &:hover {
           color: $gold;
@@ -63,7 +63,7 @@
 
       .menu {
         .menu-item {
-          color: $white;
+          color: $black;
           display: block;
           line-height: 1.4;
           padding: 0;
@@ -87,7 +87,7 @@
 
           a {
             @extend %body-s;
-            color: $white;
+            color: $black;
             text-decoration: none;
 
             &:hover {
