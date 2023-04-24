@@ -30,7 +30,7 @@
   }
 
   &__caption {
-    padding: rem(5px) rem(20px) rem(46px);
+    padding: rem(5px) rem(20px) rem(26px);
     text-align: center;
 
     h2 {
@@ -41,6 +41,11 @@
 
     .star-rating {
       margin: rem(8px) auto;
+    }
+
+    @include from(l) {
+      min-height: rem(190px);
+      padding-bottom: rem(76px)
     }
   }
 
@@ -72,11 +77,11 @@
 
   &__ctas {
     @include from(l) {
-      bottom: 0;
+      bottom: rem(20px);
       left: 0;
       position: absolute;
       width: 100%;
-      padding: 0 15%;
+      padding: 0 rem(26px);
     }
   }
 

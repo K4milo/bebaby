@@ -1,0 +1,26 @@
+.taxonomy-menu {
+  padding: rem(20px) rem(16px);
+  text-align: center;
+
+  &__item {
+    display: block;
+    margin: 0 rem(10px);
+    padding: rem(12px);
+
+    @include from(l) {
+      display: inline-block;
+      padding: initial;
+    }
+  }
+
+  &__links {
+    padding: 0;
+    margin: 0;
+  }
+
+  &__link {
+    @extend %body-btn;
+
+    display: block;
+  }
+}

@@ -1,6 +1,6 @@
 .main-content {
   &__header {
-    border-bottom: rem(2px) solid $brand-bg;
+    border-bottom: rem(2px) solid $stick-rose;
     text-align: center;
 
     @include from(l) {
@@ -9,7 +9,7 @@
   }
 
   &__title {
-    color: $brand-bg;
+    color: $rose-2;
   }
 
   &__link {
