@@ -17,4 +17,4 @@ jobs:
         server: ftp.bebaby.com.co
         username: ${{ secrets.ftp_user }}
         password: ${{ secrets.ftp_password }}
-        server-dir: /home/u818776000/domains/bebaby.com.co/public_html/
+        server-dir: /
