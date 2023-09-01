@@ -1,6 +1,7 @@
 .card-category {
   position: relative;
   overflow: hidden;
+  margin-bottom: rem(16px);
 
   $self: &;
 
@@ -21,7 +22,7 @@
   }
 
   &__caption {
-    background-color: rgba($skin, .85);
+    background-color: $blue_cake;
     bottom: 0;
     display: flex;
     color: $white;
@@ -60,7 +61,7 @@
     }
 
     #{$self}__caption {
-      background-color: rgba($skin, 1);
+      background-color: $yellow;
     }
 
     #{$self}__body {

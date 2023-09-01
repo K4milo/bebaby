@@ -1,7 +1,7 @@
 body {
   .content-area {
     .woocommerce-products-header {
-      border-bottom: rem(2px) solid $brand-bg;
+      border-bottom: rem(2px) solid $green_dino;
       text-align: center;
 
       @include from(l) {
@@ -9,7 +9,7 @@ body {
       }
 
       &__title {
-        color: $brand-bg;
+        color: $green_dino;
       }
     }
   }

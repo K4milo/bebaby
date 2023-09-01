@@ -24,9 +24,9 @@
   }
 
   &__icon {
-    background-color: $skin;
+    background-color: $green_dino;
     border-radius: 100%;
-    color: $brand-bg;
+    color: $cream;
     cursor: pointer;
     font-size: rem(22px);
     height: rem(45px);
@@ -35,7 +35,7 @@
     width: rem(45px);
 
     &:hover {
-      background-color: $sun;
+      background-color: $green_lt;
     }
   }
 
@@ -46,7 +46,7 @@
   }
 
   &__cart-count {
-    background-color: $brand-bg;
+    background-color: $pink;
     border-radius: 100%;
     bottom: rem(-4px);
     color: $white;

@@ -1,5 +1,4 @@
-.product .card-product,
-.card-product  {
+.card-product {
   background-color: $white;
   margin-bottom: rem(30px);
   position: relative;
@@ -8,10 +7,6 @@
   $self: &;
 
   @include from(l) {
-    min-height: rem(435px);
-  }
-
-  @include from(xl) {
     min-height: rem(385px);
   }
 
@@ -34,14 +29,14 @@
     h2 {
       @extend %h3;
 
-      color: $brand-bg;
+      color: $green_dino;
     }
   }
 
   &__title {
     @extend %h3;
 
-    color: $blue;
+    color: $blue_dk;
     text-decoration: none;
   }
 
@@ -51,14 +46,15 @@
     &-ammount {
       @extend %h3;
 
-      background-color: $sun;
+      background-color: $yellow;
       color: $white;
       display: inline-block;
       padding: rem(5px);
     }
 
     .price {
-      @extend %body;
+      @extend %h3;
+
       color: $blue;
     }
   }

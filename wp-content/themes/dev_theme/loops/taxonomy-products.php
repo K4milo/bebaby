@@ -43,7 +43,7 @@ if ($categories): ?>
     </div>
   </div>
 </section>
-<img src="<?php echo get_stylesheet_directory_uri(); ?>/img/pattern-banner.jpg"
+<img src="<?php echo get_stylesheet_directory_uri(); ?>/img/pattern-banner.png"
     aria-role="presentation" class="img-fluid"/>
 <?php
 endif;

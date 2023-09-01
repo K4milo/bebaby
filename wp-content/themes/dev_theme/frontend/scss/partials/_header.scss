@@ -1,17 +1,22 @@
 .main-menu {
-  background-color: $bone;
-  border-bottom: rem(1px) solid rgba($brand-bg, .2);
-  border-top: rem(1px) solid rgba($brand-bg, .2);
+  background-color: $green_dino;
+  border-bottom: rem(1px) solid rgba($pink, .6);
+  border-top: rem(1px) solid rgba($pink, .7);
 
   &__logo {
     @include iconBg('../images/brand/logo.svg');
+    margin-top: rem(10px);
+    height: rem(60px);
     width: rem(120px);
-    height: rem(48px);
 
     @include from(l) {
-      width: rem(180px);
+      width: rem(200px);
       height: rem(93px);
     }
+  }
+
+  .navbar-toggler-icon i {
+    color: $green_dino;
   }
 
   .menu-menu-principal-container {
@@ -53,9 +58,15 @@
     }
   }
   &__link {
-    color: $brand-bg;
+    color: $white;
+    font-family: $bd;
+    font-weight: 900;
     padding: rem(16px);
     text-align: center;
+
+    &:hover {
+      color: $yellow;
+    }
 
     @include from(l) {
       text-align: left;

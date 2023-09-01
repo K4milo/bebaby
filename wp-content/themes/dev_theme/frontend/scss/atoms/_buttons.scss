@@ -10,23 +10,23 @@ button.woocommerce-button {
 
 .button.add_to_cart_button,
 .button.product_type_variable.add_to_cart_button {
-  background: transparent;
-  border: rem(2px) solid $sun;
-  color: $brand-bg;
+  background: $yellow;
+  border: rem(2px) solid $yellow;
+  color: $white;
   display: block;
   padding: rem(5px);
   transition: all .3s ease-in-out;
 
   &:hover {
-    background-color: $sun;
-    color: $brand-bg;
+    background-color: $green_dino;
+    color: $white;
   }
 }
 
 .wpcf7-form-control.has-spinner.wpcf7-submit,
 .checkout-button.button.alt.wc-forward,
 .single_add_to_cart_button.button:not(.disabled) {
-  background-color: $blue;
+  background-color: $yellow;
   color: $white;
   transition: all .3s ease-in-out;
 
